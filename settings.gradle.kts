@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "C"
+rootProject.name = "BetterDpad"
 include(":app")
  
