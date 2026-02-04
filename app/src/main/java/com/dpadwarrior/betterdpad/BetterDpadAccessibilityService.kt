@@ -12,6 +12,11 @@ class BetterDpadAccessibilityService : AccessibilityService() {
 
     private var lastFocusedViewInfo: String? = null
 
+    private val appConfigs: Map<String, AppAccessibilityConfig> = listOf(
+        GoogleMessageConfig(),
+        GoogleMapsConfig()
+    ).associateBy { it.packageName }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         when (event?.eventType) {
             AccessibilityEvent.TYPE_VIEW_FOCUSED -> {
@@ -38,43 +43,66 @@ class BetterDpadAccessibilityService : AccessibilityService() {
                     source.recycle()
                 }
             }
-            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
-                event.source?.let { source ->
-                    val windowStateChangeInfo = "App: ${source.packageName}, " +
-                            "Source: ${source.className}, " +
-                            "Content-Description: ${source.contentDescription}, " +
-                            "ID: ${source.viewIdResourceName}"
-                    Log.d("BetterDpad", "Window state changed: $windowStateChangeInfo")
-                    source.recycle()
+            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
+                val rootNode = rootInActiveWindow ?: return
+                val pkg = rootNode.packageName?.toString()
+                if (pkg != null) {
+                    appConfigs[pkg]?.onAccessibilityEvent(event, rootNode)
                 }
+                rootNode.recycle()
             }
         }
     }
 
     override fun onKeyEvent(event: KeyEvent?): Boolean {
-        if (event?.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_POUND) {
-            val rootNode = rootInActiveWindow
-            if (rootNode?.packageName == "com.google.android.apps.messaging") {
-                val startChatButton = findStartChatButton(rootNode)
-                startChatButton?.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
-                startChatButton?.recycle()
+        if (event == null) return super.onKeyEvent(event)
+
+        rootInActiveWindow?.let { rootNode ->
+            if (event.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_STAR) {
+                Log.d("BetterDpad", "--- Dumping View Hierarchy ---")
+                logViewHierarchy(rootNode, 0)
+                Log.d("BetterDpad", "--- End of View Hierarchy ---")
+                rootNode.recycle()
+                return true
             }
-            rootNode?.recycle()
+
+            val pkg = rootNode.packageName?.toString()
+            if (pkg != null) {
+                Log.d("BetterDpad", "Package name: $pkg")
+                val config = appConfigs[pkg]
+                if (config != null) {
+                    Log.d("BetterDpad", "Config found: ${config.packageName} ${event.keyCode} ${event.action}")
+                    val handled = config.onKeyEvent(event, rootNode)
+                    rootNode.recycle()
+                    if (handled) return true
+                } else {
+                    rootNode.recycle()
+                }
+            } else {
+                rootNode.recycle()
+            }
         }
+
         return super.onKeyEvent(event)
     }
 
-    private fun findStartChatButton(rootNode: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        val nodes = rootNode.findAccessibilityNodeInfosByText("Start chat")
-        for (node in nodes) {
-            if (node.className == "android.widget.Button") {
-                return node
-            }
+    private fun logViewHierarchy(node: AccessibilityNodeInfo?, depth: Int) {
+        if (node == null) return
+        val indent = "  ".repeat(depth)
+        val nodeInfo = "View: ${node.className}, " +
+                "Content-Description: ${node.contentDescription}, " +
+                "ID: [${node.viewIdResourceName}], " +
+                "Clickable: ${node.isClickable}, " +
+                "Focusable: ${node.isFocusable}"
+        Log.d("BetterDpad", "$indent$nodeInfo")
+
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i)
+            logViewHierarchy(child, depth + 1)
+            child?.recycle()
         }
-        return null
     }
 
     override fun onInterrupt() {
-        // Not needed for this implementation
     }
 }
