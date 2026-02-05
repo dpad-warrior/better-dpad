@@ -14,7 +14,8 @@ class BetterDpadAccessibilityService : AccessibilityService() {
 
     private val appConfigs: Map<String, AppAccessibilityConfig> = listOf(
         GoogleMessageConfig(),
-        GoogleMapsConfig()
+        GoogleMapsConfig(),
+        ThunderbirdConfig()
     ).associateBy { it.packageName }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
