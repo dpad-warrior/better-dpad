@@ -2,6 +2,11 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
+val versionFile = rootProject.file("version.txt")
+val semver = versionFile.readText().trim()
+val (major, minor, patch) = semver.split(".").map { it.toInt() }
+val computedVersionCode = major * 10000 + minor * 100 + patch
+
 android {
     namespace = "com.dpadwarrior.betterdpad"
     compileSdk {
@@ -12,8 +17,8 @@ android {
         applicationId = "com.dpadwarrior.betterdpad"
         minSdk = 27
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = computedVersionCode
+        versionName = "1.0.0" // x-release-please-version
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
