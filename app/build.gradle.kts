@@ -4,7 +4,8 @@ plugins {
 
 val versionFile = rootProject.file("version.txt")
 val semver = versionFile.readText().trim()
-val (major, minor, patch) = semver.split(".").map { it.toInt() }
+val versionCore = semver.split("-")[0]
+val (major, minor, patch) = versionCore.split(".").map { it.toInt() }
 val computedVersionCode = major * 10000 + minor * 100 + patch
 
 android {
@@ -18,7 +19,7 @@ android {
         minSdk = 27
         targetSdk = 36
         versionCode = computedVersionCode
-        versionName = "1.0.0" // x-release-please-version
+        versionName = "0.1.0-alpha" // x-release-please-version
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
