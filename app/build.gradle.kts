@@ -19,7 +19,7 @@ android {
         minSdk = 27
         targetSdk = 36
         versionCode = computedVersionCode
-        versionName = "0.1.0-alpha" // x-release-please-version
+        versionName = "0.0.0-alpha" // x-release-please-version
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
