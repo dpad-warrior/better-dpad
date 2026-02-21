@@ -1,5 +1,6 @@
 package com.dpadwarrior.betterdpad
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
@@ -17,15 +18,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -36,34 +37,32 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             BetterDpadTheme {
-                BetterDpadScreen()
+                val context = LocalContext.current
+                var serviceEnabled by remember { mutableStateOf(false) }
+
+                val lifecycleOwner = LocalLifecycleOwner.current
+                DisposableEffect(lifecycleOwner) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        if (event == Lifecycle.Event.ON_RESUME) {
+                            serviceEnabled = isAccessibilityServiceEnabled(context)
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+                }
+
+                BetterDpadScreen(
+                    serviceEnabled = serviceEnabled,
+                    onEnableClick = { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+                )
             }
         }
     }
-}
-
-@Composable
-fun BetterDpadTheme(content: @Composable () -> Unit) {
-    androidx.compose.material3.MaterialTheme(content = content)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BetterDpadScreen() {
-    val context = LocalContext.current
-    var serviceEnabled by remember { mutableStateOf(false) }
-
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                serviceEnabled = isAccessibilityServiceEnabled(context)
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
+fun BetterDpadScreen(serviceEnabled: Boolean, onEnableClick: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("Better Dpad") })
@@ -76,20 +75,15 @@ fun BetterDpadScreen() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = if (serviceEnabled) "Service status: Enabled" else "Service status: Disabled"
-            )
-            Button(
-                onClick = { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
-                enabled = !serviceEnabled
-            ) {
+            Text(text = if (serviceEnabled) "Service status: Enabled" else "Service status: Disabled")
+            Button(onClick = onEnableClick, enabled = !serviceEnabled) {
                 Text("Enable Service")
             }
         }
     }
 }
 
-private fun isAccessibilityServiceEnabled(context: android.content.Context): Boolean {
+private fun isAccessibilityServiceEnabled(context: Context): Boolean {
     var accessibilityEnabled = 0
     val service = context.packageName + "/" + BetterDpadAccessibilityService::class.java.canonicalName
     try {
@@ -97,7 +91,7 @@ private fun isAccessibilityServiceEnabled(context: android.content.Context): Boo
             context.contentResolver,
             Settings.Secure.ACCESSIBILITY_ENABLED
         )
-    } catch (e: Settings.SettingNotFoundException) {
+    } catch (_: Settings.SettingNotFoundException) {
         // accessibility is not enabled
     }
     val stringColonSplitter = TextUtils.SimpleStringSplitter(':')
@@ -109,10 +103,7 @@ private fun isAccessibilityServiceEnabled(context: android.content.Context): Boo
         if (settingValue != null) {
             stringColonSplitter.setString(settingValue)
             while (stringColonSplitter.hasNext()) {
-                val accessibilityService = stringColonSplitter.next()
-                if (accessibilityService.equals(service, ignoreCase = true)) {
-                    return true
-                }
+                if (stringColonSplitter.next().equals(service, ignoreCase = true)) return true
             }
         }
     }
@@ -123,6 +114,6 @@ private fun isAccessibilityServiceEnabled(context: android.content.Context): Boo
 @Composable
 fun BetterDpadScreenPreview() {
     BetterDpadTheme {
-        BetterDpadScreen()
+        BetterDpadScreen(serviceEnabled = false, onEnableClick = {})
     }
 }
