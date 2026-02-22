@@ -1,4 +1,4 @@
-package com.dpadwarrior.betterdpad
+package com.dpadwarrior.betterdpad.accessibility.appconfigs
 
 import android.util.Log
 import android.view.KeyEvent

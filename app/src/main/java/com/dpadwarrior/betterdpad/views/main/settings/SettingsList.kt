@@ -1,4 +1,4 @@
-package com.dpadwarrior.betterdpad.settings
+package com.dpadwarrior.betterdpad.views.main.settings
 
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.foundation.clickable
@@ -17,7 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.dpadwarrior.betterdpad.BetterDpadTheme
+import com.dpadwarrior.betterdpad.views.BetterDpadTheme
 
 @Composable
 fun SettingsList(

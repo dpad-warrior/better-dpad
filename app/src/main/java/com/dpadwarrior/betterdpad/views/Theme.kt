@@ -1,4 +1,4 @@
-package com.dpadwarrior.betterdpad
+package com.dpadwarrior.betterdpad.views
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme

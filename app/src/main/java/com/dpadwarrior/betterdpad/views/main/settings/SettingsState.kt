@@ -1,4 +1,4 @@
-package com.dpadwarrior.betterdpad.settings
+package com.dpadwarrior.betterdpad.views.main.settings
 
 data class SettingsState(
     val debugMode: Boolean = false,

@@ -10,41 +10,44 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "app_prefs")
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "app_prefs")
 
-object AppPreferences {
+class AppPreferences(context: Context) {
+
+    private val dataStore = context.applicationContext.dataStore
+
     private val DEBUG_MODE = booleanPreferencesKey("debug_mode")
     private val JUMP_TO_FIRST_KEY_CODE = intPreferencesKey("jump_to_first_key_code")
     private val JUMP_TO_LAST_KEY_CODE = intPreferencesKey("jump_to_last_key_code")
     private val JUMP_TO_FAB_KEY_CODE = intPreferencesKey("jump_to_fab_key_code")
 
-    private const val NO_BINDING = -1
+    private val NO_BINDING = -1
 
-    fun isDebugModeEnabled(context: Context): Flow<Boolean> =
-        context.dataStore.data.map { prefs -> prefs[DEBUG_MODE] ?: false }
+    val isDebugModeEnabled: Flow<Boolean> =
+        dataStore.data.map { prefs -> prefs[DEBUG_MODE] ?: false }
 
-    fun getJumpToFirstKeyCode(context: Context): Flow<Int?> =
-        context.dataStore.data.map { prefs -> prefs[JUMP_TO_FIRST_KEY_CODE]?.takeIf { it != NO_BINDING } }
+    val jumpToFirstKeyCode: Flow<Int?> =
+        dataStore.data.map { prefs -> prefs[JUMP_TO_FIRST_KEY_CODE]?.takeIf { it != NO_BINDING } }
 
-    fun getJumpToLastKeyCode(context: Context): Flow<Int?> =
-        context.dataStore.data.map { prefs -> prefs[JUMP_TO_LAST_KEY_CODE]?.takeIf { it != NO_BINDING } }
+    val jumpToLastKeyCode: Flow<Int?> =
+        dataStore.data.map { prefs -> prefs[JUMP_TO_LAST_KEY_CODE]?.takeIf { it != NO_BINDING } }
 
-    fun getJumpToFabKeyCode(context: Context): Flow<Int?> =
-        context.dataStore.data.map { prefs -> prefs[JUMP_TO_FAB_KEY_CODE]?.takeIf { it != NO_BINDING } }
+    val jumpToFabKeyCode: Flow<Int?> =
+        dataStore.data.map { prefs -> prefs[JUMP_TO_FAB_KEY_CODE]?.takeIf { it != NO_BINDING } }
 
-    suspend fun setDebugMode(context: Context, enabled: Boolean) {
-        context.dataStore.edit { prefs -> prefs[DEBUG_MODE] = enabled }
+    suspend fun setDebugMode(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[DEBUG_MODE] = enabled }
     }
 
-    suspend fun setJumpToFirstKeyCode(context: Context, keyCode: Int?) {
-        context.dataStore.edit { prefs -> prefs[JUMP_TO_FIRST_KEY_CODE] = keyCode ?: NO_BINDING }
+    suspend fun setJumpToFirstKeyCode(keyCode: Int?) {
+        dataStore.edit { prefs -> prefs[JUMP_TO_FIRST_KEY_CODE] = keyCode ?: NO_BINDING }
     }
 
-    suspend fun setJumpToLastKeyCode(context: Context, keyCode: Int?) {
-        context.dataStore.edit { prefs -> prefs[JUMP_TO_LAST_KEY_CODE] = keyCode ?: NO_BINDING }
+    suspend fun setJumpToLastKeyCode(keyCode: Int?) {
+        dataStore.edit { prefs -> prefs[JUMP_TO_LAST_KEY_CODE] = keyCode ?: NO_BINDING }
     }
 
-    suspend fun setJumpToFabKeyCode(context: Context, keyCode: Int?) {
-        context.dataStore.edit { prefs -> prefs[JUMP_TO_FAB_KEY_CODE] = keyCode ?: NO_BINDING }
+    suspend fun setJumpToFabKeyCode(keyCode: Int?) {
+        dataStore.edit { prefs -> prefs[JUMP_TO_FAB_KEY_CODE] = keyCode ?: NO_BINDING }
     }
 }
