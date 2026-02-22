@@ -1,4 +1,4 @@
-package com.dpadwarrior.betterdpad
+package com.dpadwarrior.betterdpad.accessibility
 
 import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
@@ -6,6 +6,8 @@ import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import com.dpadwarrior.betterdpad.BetterDpad
+import com.dpadwarrior.betterdpad.accessibility.appconfigs.AppConfigLoader
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CoroutineScope
@@ -30,11 +32,7 @@ class BetterDpadAccessibilityService : AccessibilityService() {
     private val jumpToLastKeyCode = AtomicReference<Int?>(null)
     private val jumpToFabKeyCode = AtomicReference<Int?>(null)
 
-    private val appConfigs: Map<String, AppAccessibilityConfig> = listOf(
-        GoogleMessageConfig(),
-        GoogleMapsConfig(),
-        ThunderbirdConfig()
-    ).associateBy { it.packageName }
+    private val appConfigs = AppConfigLoader.configs
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         when (event?.eventType) {
@@ -176,18 +174,11 @@ class BetterDpadAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        serviceScope.launch {
-            AppPreferences.isDebugModeEnabled(applicationContext).collect { debugModeEnabled.set(it) }
-        }
-        serviceScope.launch {
-            AppPreferences.getJumpToFirstKeyCode(applicationContext).collect { jumpToFirstKeyCode.set(it) }
-        }
-        serviceScope.launch {
-            AppPreferences.getJumpToLastKeyCode(applicationContext).collect { jumpToLastKeyCode.set(it) }
-        }
-        serviceScope.launch {
-            AppPreferences.getJumpToFabKeyCode(applicationContext).collect { jumpToFabKeyCode.set(it) }
-        }
+        val prefs = (application as BetterDpad).preferences
+        serviceScope.launch { prefs.isDebugModeEnabled.collect { debugModeEnabled.set(it) } }
+        serviceScope.launch { prefs.jumpToFirstKeyCode.collect { jumpToFirstKeyCode.set(it) } }
+        serviceScope.launch { prefs.jumpToLastKeyCode.collect { jumpToLastKeyCode.set(it) } }
+        serviceScope.launch { prefs.jumpToFabKeyCode.collect { jumpToFabKeyCode.set(it) } }
     }
 
     override fun onDestroy() {

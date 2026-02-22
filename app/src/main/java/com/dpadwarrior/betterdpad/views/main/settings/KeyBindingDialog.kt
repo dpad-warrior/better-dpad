@@ -1,4 +1,4 @@
-package com.dpadwarrior.betterdpad.settings
+package com.dpadwarrior.betterdpad.views.main.settings
 
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.foundation.layout.Box
@@ -28,7 +28,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
-import com.dpadwarrior.betterdpad.BetterDpadAccessibilityService
+import com.dpadwarrior.betterdpad.accessibility.BetterDpadAccessibilityService
 
 @Composable
 fun KeyBindingDialog(

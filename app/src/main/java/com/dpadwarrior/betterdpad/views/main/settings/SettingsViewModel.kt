@@ -1,9 +1,9 @@
-package com.dpadwarrior.betterdpad.settings
+package com.dpadwarrior.betterdpad.views.main.settings
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.dpadwarrior.betterdpad.AppPreferences
+import com.dpadwarrior.betterdpad.BetterDpad
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -11,28 +11,30 @@ import kotlinx.coroutines.launch
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val prefs = (application as BetterDpad).preferences
+
     val uiState = combine(
-        AppPreferences.isDebugModeEnabled(application),
-        AppPreferences.getJumpToFirstKeyCode(application),
-        AppPreferences.getJumpToLastKeyCode(application),
-        AppPreferences.getJumpToFabKeyCode(application)
+        prefs.isDebugModeEnabled,
+        prefs.jumpToFirstKeyCode,
+        prefs.jumpToLastKeyCode,
+        prefs.jumpToFabKeyCode
     ) { debugMode, jumpToFirst, jumpToLast, jumpToFab ->
         SettingsState(debugMode, jumpToFirst, jumpToLast, jumpToFab)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsState())
 
     fun setDebugMode(enabled: Boolean) {
-        viewModelScope.launch { AppPreferences.setDebugMode(getApplication(), enabled) }
+        viewModelScope.launch { prefs.setDebugMode(enabled) }
     }
 
     fun setJumpToFirst(keyCode: Int?) {
-        viewModelScope.launch { AppPreferences.setJumpToFirstKeyCode(getApplication(), keyCode) }
+        viewModelScope.launch { prefs.setJumpToFirstKeyCode(keyCode) }
     }
 
     fun setJumpToLast(keyCode: Int?) {
-        viewModelScope.launch { AppPreferences.setJumpToLastKeyCode(getApplication(), keyCode) }
+        viewModelScope.launch { prefs.setJumpToLastKeyCode(keyCode) }
     }
 
     fun setJumpToFab(keyCode: Int?) {
-        viewModelScope.launch { AppPreferences.setJumpToFabKeyCode(getApplication(), keyCode) }
+        viewModelScope.launch { prefs.setJumpToFabKeyCode(keyCode) }
     }
 }
