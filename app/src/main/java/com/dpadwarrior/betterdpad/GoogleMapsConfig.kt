@@ -13,6 +13,8 @@ class GoogleMapsConfig : AppAccessibilityConfig() {
 
     override val packageName: String = "com.google.android.apps.maps"
 
+    override val fabLabel = "Re-center map to your location"
+
     fun detectScreen(rootNode: AccessibilityNodeInfo): Screen {
         if (hasNodeWithText(rootNode, "Search here")) return Screen.MAIN_SCREEN
         return Screen.UNKNOWN

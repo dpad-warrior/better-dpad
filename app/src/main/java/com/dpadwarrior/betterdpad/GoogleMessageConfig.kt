@@ -13,6 +13,8 @@ class GoogleMessageConfig : AppAccessibilityConfig() {
 
     override val packageName: String = "com.google.android.apps.messaging"
 
+    override val fabLabel = "Start chat"
+
     fun detectScreen(rootNode: AccessibilityNodeInfo): Screen {
         if (hasNodeWithText(rootNode, "Start chat")) return Screen.CONVERSATION_LIST
         if (hasNodeWithText(rootNode, "Show attach emoji and stickers screen")) return Screen.CONVERSATION
@@ -25,6 +27,7 @@ class GoogleMessageConfig : AppAccessibilityConfig() {
     ): Boolean {
         if (rootNode == null) return false
 
+        // TODO: foundation for future action implementations
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (detectScreen(rootNode)) {
                 Screen.CONVERSATION_LIST -> {

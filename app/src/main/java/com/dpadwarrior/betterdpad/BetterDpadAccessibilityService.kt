@@ -7,6 +7,7 @@ import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -16,10 +17,18 @@ import kotlinx.coroutines.launch
 @SuppressLint("AccessibilityPolicy")
 class BetterDpadAccessibilityService : AccessibilityService() {
 
+    companion object {
+        // Set to true while a key binding dialog is open so all keys pass through to the UI.
+        @Volatile var isCapturingKey = false
+    }
+
     private var lastFocusedViewInfo: String? = null
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val debugModeEnabled = AtomicBoolean(false)
+    private val jumpToFirstKeyCode = AtomicReference<Int?>(null)
+    private val jumpToLastKeyCode = AtomicReference<Int?>(null)
+    private val jumpToFabKeyCode = AtomicReference<Int?>(null)
 
     private val appConfigs: Map<String, AppAccessibilityConfig> = listOf(
         GoogleMessageConfig(),
@@ -36,7 +45,6 @@ class BetterDpadAccessibilityService : AccessibilityService() {
                             "Content-Description: ${source.contentDescription}, " +
                             "ID: ${source.viewIdResourceName}"
 
-                    Log.d("BetterDpad", "Previous focused view: $lastFocusedViewInfo")
                     Log.d("BetterDpad", "Current focused view: $currentFocusedViewInfo")
 
                     lastFocusedViewInfo = currentFocusedViewInfo
@@ -54,12 +62,7 @@ class BetterDpadAccessibilityService : AccessibilityService() {
                 }
             }
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
-                val rootNode = rootInActiveWindow ?: return
-                val pkg = rootNode.packageName?.toString()
-                if (pkg != null) {
-                    appConfigs[pkg]?.onAccessibilityEvent(event, rootNode)
-                }
-                rootNode.recycle()
+                // TODO: will be needed for app-specific actions
             }
         }
     }
@@ -67,35 +70,91 @@ class BetterDpadAccessibilityService : AccessibilityService() {
     override fun onKeyEvent(event: KeyEvent?): Boolean {
         if (event == null) return super.onKeyEvent(event)
 
+        // Pass all keys through while the user is configuring a binding in the UI.
+        if (isCapturingKey) {
+            Log.d("BetterDpad", "isCapturingKey returns ${isCapturingKey}. Skipping interception")
+            return super.onKeyEvent(event)
+        }
+
         rootInActiveWindow?.let { rootNode ->
-            if (event.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_STAR) {
-                if (debugModeEnabled.get()) {
+            // Should not intercept if user is interacting with system UI
+            if (rootNode.packageName == "com.android.systemui") return super.onKeyEvent(event)
+
+            if (event.action == KeyEvent.ACTION_DOWN) {
+                Log.d("BetterDpad", "Input event received. Key code: ${event.keyCode}")
+
+                // Debug dump takes priority when STAR is pressed and debug mode is on.
+                if (event.keyCode == KeyEvent.KEYCODE_STAR && debugModeEnabled.get()) {
                     Log.d("BetterDpad", "--- Dumping View Hierarchy ---")
                     logViewHierarchy(rootNode, 0)
                     Log.d("BetterDpad", "--- End of View Hierarchy ---")
+                    rootNode.recycle()
+                    return true
                 }
-                rootNode.recycle()
-                return true
-            }
 
-            val pkg = rootNode.packageName?.toString()
-            if (pkg != null) {
-                Log.d("BetterDpad", "Package name: $pkg")
-                val config = appConfigs[pkg]
-                if (config != null) {
-                    Log.d("BetterDpad", "Config found: ${config.packageName} ${event.keyCode} ${event.action}")
-                    val handled = config.onKeyEvent(event, rootNode)
+                // Jump to first focusable element (all apps).
+                val firstKey = jumpToFirstKeyCode.get()
+                if (firstKey != null && event.keyCode == firstKey) {
+                    val firstFocusableNode = findFirstFocusable(rootNode)
+                    Log.d("BetterDpad", "First focusable node found: $firstFocusableNode")
+                    firstFocusableNode?.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+                    rootNode.recycle()
+                    return true
+                }
+
+                // Jump to last focusable element (all apps).
+                val lastKey = jumpToLastKeyCode.get()
+                if (lastKey != null && event.keyCode == lastKey) {
+                    val lastFocusableNode = findLastFocusable(rootNode)
+                    Log.d("BetterDpad", "Last focusable node found: $lastFocusableNode")
+                    lastFocusableNode?.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+                    rootNode.recycle()
+                    return true
+                }
+
+                // Jump to FAB (per-app).
+                val fabKey = jumpToFabKeyCode.get()
+                if (fabKey != null && event.keyCode == fabKey) {
+                    val pkg = rootNode.packageName?.toString()
+                    val handled = pkg?.let { appConfigs[it]?.focusFab(rootNode) } ?: false
                     rootNode.recycle()
                     if (handled) return true
-                } else {
-                    rootNode.recycle()
+                    return super.onKeyEvent(event)
                 }
-            } else {
-                rootNode.recycle()
             }
+
+            // TODO: uncomment the config debug logs when I get to app-specific actions
+//            val pkg = rootNode.packageName?.toString()
+//            if (pkg != null) {
+//                Log.d("BetterDpad", "Package name: $pkg")
+//                val config = appConfigs[pkg]
+//                if (config != null) {
+//                    Log.d("BetterDpad", "Config found: ${config.packageName} ${event.keyCode} ${event.action}")
+//                }
+//            }
+
+            rootNode.recycle()
         }
 
         return super.onKeyEvent(event)
+    }
+
+    private fun findFirstFocusable(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        if (node.isFocusable) return node
+        for (i in 0 until node.childCount) {
+            val result = node.getChild(i)?.let { findFirstFocusable(it) }
+            if (result != null) return result
+        }
+        return null
+    }
+
+    private fun findLastFocusable(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        var last: AccessibilityNodeInfo? = if (node.isFocusable) node else null
+        for (i in 0 until node.childCount) {
+            val childLast = node.getChild(i)?.let { findLastFocusable(it) }
+            if (childLast != null) last = childLast
+        }
+        return last
     }
 
     private fun logViewHierarchy(node: AccessibilityNodeInfo?, depth: Int) {
@@ -118,9 +177,16 @@ class BetterDpadAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         serviceScope.launch {
-            AppPreferences.isDebugModeEnabled(applicationContext).collect { enabled ->
-                debugModeEnabled.set(enabled)
-            }
+            AppPreferences.isDebugModeEnabled(applicationContext).collect { debugModeEnabled.set(it) }
+        }
+        serviceScope.launch {
+            AppPreferences.getJumpToFirstKeyCode(applicationContext).collect { jumpToFirstKeyCode.set(it) }
+        }
+        serviceScope.launch {
+            AppPreferences.getJumpToLastKeyCode(applicationContext).collect { jumpToLastKeyCode.set(it) }
+        }
+        serviceScope.launch {
+            AppPreferences.getJumpToFabKeyCode(applicationContext).collect { jumpToFabKeyCode.set(it) }
         }
     }
 
