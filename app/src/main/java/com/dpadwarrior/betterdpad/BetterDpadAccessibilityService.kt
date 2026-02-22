@@ -6,11 +6,20 @@ import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 @SuppressLint("AccessibilityPolicy")
 class BetterDpadAccessibilityService : AccessibilityService() {
 
     private var lastFocusedViewInfo: String? = null
+
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val debugModeEnabled = AtomicBoolean(false)
 
     private val appConfigs: Map<String, AppAccessibilityConfig> = listOf(
         GoogleMessageConfig(),
@@ -60,9 +69,11 @@ class BetterDpadAccessibilityService : AccessibilityService() {
 
         rootInActiveWindow?.let { rootNode ->
             if (event.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_STAR) {
-                Log.d("BetterDpad", "--- Dumping View Hierarchy ---")
-                logViewHierarchy(rootNode, 0)
-                Log.d("BetterDpad", "--- End of View Hierarchy ---")
+                if (debugModeEnabled.get()) {
+                    Log.d("BetterDpad", "--- Dumping View Hierarchy ---")
+                    logViewHierarchy(rootNode, 0)
+                    Log.d("BetterDpad", "--- End of View Hierarchy ---")
+                }
                 rootNode.recycle()
                 return true
             }
@@ -102,6 +113,20 @@ class BetterDpadAccessibilityService : AccessibilityService() {
             logViewHierarchy(child, depth + 1)
             child?.recycle()
         }
+    }
+
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        serviceScope.launch {
+            AppPreferences.isDebugModeEnabled(applicationContext).collect { enabled ->
+                debugModeEnabled.set(enabled)
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceScope.cancel()
     }
 
     override fun onInterrupt() {
