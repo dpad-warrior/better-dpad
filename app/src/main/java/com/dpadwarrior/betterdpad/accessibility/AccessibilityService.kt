@@ -98,6 +98,8 @@ class BetterDpadAccessibilityService : AccessibilityService() {
                 return super.onKeyEvent(event)
             }
 
+            val appConfig = appConfigs[rootNode.packageName?.toString()]
+
             if (event.action == KeyEvent.ACTION_DOWN) {
                 Log.d("BetterDpad", "Input event received. Key code: ${event.keyCode}")
 
@@ -110,20 +112,22 @@ class BetterDpadAccessibilityService : AccessibilityService() {
                     return true
                 }
 
-                // Jump to first focusable element (all apps).
+                // Jump to first focusable element (per-app override, then generic tree-walk).
                 val firstKey = jumpToFirstKeyCode.get()
                 if (firstKey != null && event.keyCode == firstKey) {
-                    val firstFocusableNode = findFirstFocusable(rootNode)
+                    val firstFocusableNode = appConfig?.findFirstFocusable(rootNode)
+                        ?: findFirstFocusable(rootNode)
                     Log.d("BetterDpad", "First focusable node found: $firstFocusableNode")
                     firstFocusableNode?.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
                     rootNode.recycle()
                     return true
                 }
 
-                // Jump to last focusable element (all apps).
+                // Jump to last focusable element (per-app override, then generic tree-walk).
                 val lastKey = jumpToLastKeyCode.get()
                 if (lastKey != null && event.keyCode == lastKey) {
-                    val lastFocusableNode = findLastFocusable(rootNode)
+                    val lastFocusableNode = appConfig?.findLastFocusable(rootNode)
+                        ?: findLastFocusable(rootNode)
                     Log.d("BetterDpad", "Last focusable node found: $lastFocusableNode")
                     lastFocusableNode?.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
                     rootNode.recycle()
@@ -133,23 +137,12 @@ class BetterDpadAccessibilityService : AccessibilityService() {
                 // Jump to FAB (per-app).
                 val fabKey = jumpToFabKeyCode.get()
                 if (fabKey != null && event.keyCode == fabKey) {
-                    val pkg = rootNode.packageName?.toString()
-                    val handled = pkg?.let { appConfigs[it]?.focusFab(rootNode) } ?: false
+                    val handled = appConfig?.focusFab(rootNode) ?: false
                     rootNode.recycle()
                     if (handled) return true
                     return super.onKeyEvent(event)
                 }
             }
-
-            // TODO: uncomment the config debug logs when I get to app-specific actions
-//            val pkg = rootNode.packageName?.toString()
-//            if (pkg != null) {
-//                Log.d("BetterDpad", "Package name: $pkg")
-//                val config = appConfigs[pkg]
-//                if (config != null) {
-//                    Log.d("BetterDpad", "Config found: ${config.packageName} ${event.keyCode} ${event.action}")
-//                }
-//            }
 
             rootNode.recycle()
         }

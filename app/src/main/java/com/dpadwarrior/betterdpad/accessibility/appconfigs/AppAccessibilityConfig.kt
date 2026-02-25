@@ -19,6 +19,18 @@ abstract class AppAccessibilityConfig {
     ): Boolean = false
 
     /**
+     * Returns the node that should receive focus when "jump to first" is triggered,
+     * or null to fall back to the generic tree-walk.
+     */
+    open fun findFirstFocusable(rootNode: AccessibilityNodeInfo): AccessibilityNodeInfo? = null
+
+    /**
+     * Returns the node that should receive focus when "jump to last" is triggered,
+     * or null to fall back to the generic tree-walk.
+     */
+    open fun findLastFocusable(rootNode: AccessibilityNodeInfo): AccessibilityNodeInfo? = null
+
+    /**
      * Content description or text label of the app's primary FAB.
      * Override in each app config to enable FAB jump support.
      * Leave null to indicate the app has no FAB.
