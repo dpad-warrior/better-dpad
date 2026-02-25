@@ -76,7 +76,20 @@ class BetterDpadAccessibilityService : AccessibilityService() {
 
         rootInActiveWindow?.let { rootNode ->
             // Should not intercept if user is interacting with system UI
-            if (rootNode.packageName == "com.android.systemui") return super.onKeyEvent(event)
+            if (rootNode.packageName == "com.android.systemui") {
+                Log.d("BetterDpad", "System UI is active. Skipping interception")
+                return super.onKeyEvent(event)
+            }
+
+            // Don't intercept while the soft keyboard is active (editable text field has focus).
+            val inputFocusedNode = rootNode.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+            val isKeyboardActive = inputFocusedNode?.isEditable == true
+            inputFocusedNode?.recycle()
+            if (isKeyboardActive) {
+                Log.d("BetterDpad", "Keyboard is active. Skipping interception")
+                rootNode.recycle()
+                return super.onKeyEvent(event)
+            }
 
             if (event.action == KeyEvent.ACTION_DOWN) {
                 Log.d("BetterDpad", "Input event received. Key code: ${event.keyCode}")
