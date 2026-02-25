@@ -27,6 +27,7 @@ class BetterDpadAccessibilityService : AccessibilityService() {
     private var lastFocusedViewInfo: String? = null
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val appEnabled = AtomicBoolean(true)
     private val debugModeEnabled = AtomicBoolean(false)
     private val jumpToFirstKeyCode = AtomicReference<Int?>(null)
     private val jumpToLastKeyCode = AtomicReference<Int?>(null)
@@ -67,6 +68,12 @@ class BetterDpadAccessibilityService : AccessibilityService() {
 
     override fun onKeyEvent(event: KeyEvent?): Boolean {
         if (event == null) return super.onKeyEvent(event)
+
+        // Pass all keys through when the app is disabled.
+        if (!appEnabled.get()) {
+            Log.d("BetterDpad", "App is disabled. Skipping")
+            return super.onKeyEvent(event)
+        }
 
         // Pass all keys through while the user is configuring a binding in the UI.
         if (isCapturingKey) {
@@ -188,6 +195,7 @@ class BetterDpadAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         val prefs = (application as BetterDpad).preferences
+        serviceScope.launch { prefs.isAppEnabled.collect { appEnabled.set(it) } }
         serviceScope.launch { prefs.isDebugModeEnabled.collect { debugModeEnabled.set(it) } }
         serviceScope.launch { prefs.jumpToFirstKeyCode.collect { jumpToFirstKeyCode.set(it) } }
         serviceScope.launch { prefs.jumpToLastKeyCode.collect { jumpToLastKeyCode.set(it) } }

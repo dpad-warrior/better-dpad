@@ -22,12 +22,19 @@ import com.dpadwarrior.betterdpad.views.BetterDpadTheme
 @Composable
 fun SettingsList(
     state: SettingsState,
+    onAppEnabledToggle: (Boolean) -> Unit,
     onDebugToggle: (Boolean) -> Unit,
     onJumpToFirstChange: (Int?) -> Unit,
     onJumpToLastChange: (Int?) -> Unit,
     onJumpToFabChange: (Int?) -> Unit
 ) {
     Column {
+        ListItem(
+            headlineContent = { Text("Enable BetterDpad") },
+            supportingContent = { Text("Turn on/off the helper functionalities") },
+            trailingContent = { Switch(checked = state.appEnabled, onCheckedChange = onAppEnabledToggle) }
+        )
+        HorizontalDivider()
         Text(
             text = "Universal settings",
             style = MaterialTheme.typography.labelLarge,
@@ -72,6 +79,7 @@ private fun SettingsListPreviewDisabled() {
     BetterDpadTheme {
         SettingsList(
             state = SettingsState(),
+            onAppEnabledToggle = {},
             onDebugToggle = {},
             onJumpToFirstChange = {},
             onJumpToLastChange = {},
@@ -91,6 +99,7 @@ private fun SettingsListPreviewWithBindings() {
                 jumpToLast = AndroidKeyEvent.KEYCODE_0,
                 jumpToFab = AndroidKeyEvent.KEYCODE_STAR
             ),
+            onAppEnabledToggle = {},
             onDebugToggle = {},
             onJumpToFirstChange = {},
             onJumpToLastChange = {},

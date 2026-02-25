@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -28,6 +30,7 @@ fun MainScreen(
     serviceEnabled: Boolean,
     onEnableClick: () -> Unit,
     settingsState: SettingsState,
+    onAppEnabledToggle: (Boolean) -> Unit,
     onDebugToggle: (Boolean) -> Unit,
     onJumpToFirstChange: (Int?) -> Unit,
     onJumpToLastChange: (Int?) -> Unit,
@@ -42,7 +45,8 @@ fun MainScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.Top
         ) {
             if (!serviceEnabled) {
@@ -64,6 +68,7 @@ fun MainScreen(
 
             SettingsList(
                 state = settingsState,
+                onAppEnabledToggle = onAppEnabledToggle,
                 onDebugToggle = onDebugToggle,
                 onJumpToFirstChange = onJumpToFirstChange,
                 onJumpToLastChange = onJumpToLastChange,
@@ -81,6 +86,7 @@ fun MainScreenPreview() {
             serviceEnabled = false,
             onEnableClick = {},
             settingsState = SettingsState(),
+            onAppEnabledToggle = {},
             onDebugToggle = {},
             onJumpToFirstChange = {},
             onJumpToLastChange = {},

@@ -50,6 +50,7 @@ class MainView : ComponentActivity() {
                     serviceEnabled = serviceEnabled,
                     onEnableClick = { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
                     settingsState = settingsState,
+                    onAppEnabledToggle = settingsViewModel::setAppEnabled,
                     onDebugToggle = settingsViewModel::setDebugMode,
                     onJumpToFirstChange = settingsViewModel::setJumpToFirst,
                     onJumpToLastChange = settingsViewModel::setJumpToLast,
