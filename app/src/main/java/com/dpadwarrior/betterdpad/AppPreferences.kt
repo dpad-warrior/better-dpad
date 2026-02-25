@@ -16,12 +16,16 @@ class AppPreferences(context: Context) {
 
     private val dataStore = context.applicationContext.dataStore
 
+    private val APP_ENABLED = booleanPreferencesKey("app_enabled")
     private val DEBUG_MODE = booleanPreferencesKey("debug_mode")
     private val JUMP_TO_FIRST_KEY_CODE = intPreferencesKey("jump_to_first_key_code")
     private val JUMP_TO_LAST_KEY_CODE = intPreferencesKey("jump_to_last_key_code")
     private val JUMP_TO_FAB_KEY_CODE = intPreferencesKey("jump_to_fab_key_code")
 
     private val NO_BINDING = -1
+
+    val isAppEnabled: Flow<Boolean> =
+        dataStore.data.map { prefs -> prefs[APP_ENABLED] ?: true }
 
     val isDebugModeEnabled: Flow<Boolean> =
         dataStore.data.map { prefs -> prefs[DEBUG_MODE] ?: false }
@@ -34,6 +38,10 @@ class AppPreferences(context: Context) {
 
     val jumpToFabKeyCode: Flow<Int?> =
         dataStore.data.map { prefs -> prefs[JUMP_TO_FAB_KEY_CODE]?.takeIf { it != NO_BINDING } }
+
+    suspend fun setAppEnabled(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[APP_ENABLED] = enabled }
+    }
 
     suspend fun setDebugMode(enabled: Boolean) {
         dataStore.edit { prefs -> prefs[DEBUG_MODE] = enabled }

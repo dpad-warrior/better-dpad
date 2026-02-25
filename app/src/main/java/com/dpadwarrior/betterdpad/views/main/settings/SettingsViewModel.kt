@@ -14,13 +14,18 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val prefs = (application as BetterDpad).preferences
 
     val uiState = combine(
+        prefs.isAppEnabled,
         prefs.isDebugModeEnabled,
         prefs.jumpToFirstKeyCode,
         prefs.jumpToLastKeyCode,
         prefs.jumpToFabKeyCode
-    ) { debugMode, jumpToFirst, jumpToLast, jumpToFab ->
-        SettingsState(debugMode, jumpToFirst, jumpToLast, jumpToFab)
+    ) { appEnabled, debugMode, jumpToFirst, jumpToLast, jumpToFab ->
+        SettingsState(appEnabled, debugMode, jumpToFirst, jumpToLast, jumpToFab)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsState())
+
+    fun setAppEnabled(enabled: Boolean) {
+        viewModelScope.launch { prefs.setAppEnabled(enabled) }
+    }
 
     fun setDebugMode(enabled: Boolean) {
         viewModelScope.launch { prefs.setDebugMode(enabled) }
