@@ -7,6 +7,7 @@ import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.dpadwarrior.betterdpad.BetterDpad
+import com.dpadwarrior.betterdpad.accessibility.appconfigs.AppAccessibilityConfig
 import com.dpadwarrior.betterdpad.accessibility.appconfigs.AppConfigLoader
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -60,9 +61,6 @@ class BetterDpadAccessibilityService : AccessibilityService() {
                     source.recycle()
                 }
             }
-            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
-                // TODO: will be needed for app-specific actions
-            }
         }
     }
 
@@ -89,6 +87,7 @@ class BetterDpadAccessibilityService : AccessibilityService() {
             }
 
             // Don't intercept while the soft keyboard is active (editable text field has focus).
+            // TODO: this logic needs more refinement. Extract this into an utility function?
             val inputFocusedNode = rootNode.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
             val isKeyboardActive = inputFocusedNode?.isEditable == true
             inputFocusedNode?.recycle()
@@ -115,8 +114,9 @@ class BetterDpadAccessibilityService : AccessibilityService() {
                 // Jump to first focusable element (per-app override, then generic tree-walk).
                 val firstKey = jumpToFirstKeyCode.get()
                 if (firstKey != null && event.keyCode == firstKey) {
-                    val firstFocusableNode = appConfig?.findFirstFocusable(rootNode)
-                        ?: findFirstFocusable(rootNode)
+                    val firstFocusableNode =
+                        appConfig?.getElementOverride(AppAccessibilityConfig.ElementType.FIRST, rootNode)
+                            ?: findFirstFocusable(rootNode)
                     Log.d("BetterDpad", "First focusable node found: $firstFocusableNode")
                     firstFocusableNode?.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
                     rootNode.recycle()
@@ -126,8 +126,9 @@ class BetterDpadAccessibilityService : AccessibilityService() {
                 // Jump to last focusable element (per-app override, then generic tree-walk).
                 val lastKey = jumpToLastKeyCode.get()
                 if (lastKey != null && event.keyCode == lastKey) {
-                    val lastFocusableNode = appConfig?.findLastFocusable(rootNode)
-                        ?: findLastFocusable(rootNode)
+                    val lastFocusableNode =
+                        appConfig?.getElementOverride(AppAccessibilityConfig.ElementType.LAST, rootNode)
+                            ?: findLastFocusable(rootNode)
                     Log.d("BetterDpad", "Last focusable node found: $lastFocusableNode")
                     lastFocusableNode?.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
                     rootNode.recycle()

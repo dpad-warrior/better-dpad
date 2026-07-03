@@ -1,7 +1,5 @@
 package com.dpadwarrior.betterdpad.accessibility.appconfigs
 
-import android.util.Log
-import android.view.KeyEvent
 import android.view.accessibility.AccessibilityNodeInfo
 
 class ThunderbirdConfig : AppAccessibilityConfig() {
@@ -18,49 +16,34 @@ class ThunderbirdConfig : AppAccessibilityConfig() {
         return Screen.UNKNOWN
     }
 
-    override fun onKeyEvent(
-        event: KeyEvent,
+    override fun getElementOverride(
+        elementType: ElementType,
         rootNode: AccessibilityNodeInfo?
-    ): Boolean {
-        if (rootNode == null) return false
+    ): AccessibilityNodeInfo? {
+        if (rootNode == null) return null
 
-        if (event.action == KeyEvent.ACTION_DOWN) {
-            when (detectScreen(rootNode)) {
-                Screen.INBOX_LIST -> {
-                    when (event.keyCode) {
-                        KeyEvent.KEYCODE_POUND -> {
-                            val nodes = rootNode.findAccessibilityNodeInfosByText("Compose")
-                            nodes.firstOrNull()?.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
-                            nodes.forEach { it.recycle() }
-                            return true
-                        }
-                        KeyEvent.KEYCODE_0 -> {
-                            val nodes = rootNode.findAccessibilityNodeInfosByText("More options")
-                            Log.d("BetterDpad", "More options nodes found: ${nodes.size}")
-                            nodes.firstOrNull()?.let { node ->
-                                Log.d("BetterDpad", "Node: className=${node.className}, " +
-                                        "contentDescription=${node.contentDescription}, " +
-                                        "isFocusable=${node.isFocusable}, " +
-                                        "isClickable=${node.isClickable}, " +
-                                        "isFocused=${node.isFocused}, " +
-                                        "isVisibleToUser=${node.isVisibleToUser}")
-                                val result = node.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
-                                Log.d("BetterDpad", "ACTION_FOCUS result: $result, isFocused after: ${node.isFocused}")
-
-                                // Refresh node and check again
-                                node.refresh()
-                                Log.d("BetterDpad", "After refresh - isFocused: ${node.isFocused}")
-                            }
-                            nodes.forEach { it.recycle() }
-                            return true
-                        }
-                    }
-                }
-                Screen.UNKNOWN -> {
+        when (detectScreen(rootNode)) {
+            Screen.INBOX_LIST -> {
+                when (elementType) {
+//                    ElementType.FIRST -> {
+//                        val nodes = rootNode.findAccessibilityNodeInfosByText("Compose")
+//                        nodes.firstOrNull()?.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+//                        nodes.forEach { it.recycle() }
+//                        return true
+//                    }
+//                    ElementType.LAST -> {
+//                        val nodes = rootNode.findAccessibilityNodeInfosByText("More options")
+//                        Log.d("BetterDpad", "More options nodes found: ${nodes.size}")
+//                        nodes.forEach { it.recycle() }
+//                        return true
+//                    }
+                    else -> {}
                 }
             }
+            Screen.UNKNOWN -> {
+            }
         }
-        return false
+        return null
     }
 
     private fun hasNodeWithText(rootNode: AccessibilityNodeInfo, text: String): Boolean {
