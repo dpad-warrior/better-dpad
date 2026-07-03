@@ -1,34 +1,17 @@
 package com.dpadwarrior.betterdpad.accessibility.appconfigs
 
-import android.view.KeyEvent
-import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 
 abstract class AppAccessibilityConfig {
 
+    enum class ElementType { FIRST, LAST }
+
     abstract val packageName: String
 
-    open fun onAccessibilityEvent(
-        event: AccessibilityEvent,
+    open fun getElementOverride(
+        elementType: ElementType,
         rootNode: AccessibilityNodeInfo?
-    ) {}
-
-    open fun onKeyEvent(
-        event: KeyEvent,
-        rootNode: AccessibilityNodeInfo?
-    ): Boolean = false
-
-    /**
-     * Returns the node that should receive focus when "jump to first" is triggered,
-     * or null to fall back to the generic tree-walk.
-     */
-    open fun findFirstFocusable(rootNode: AccessibilityNodeInfo): AccessibilityNodeInfo? = null
-
-    /**
-     * Returns the node that should receive focus when "jump to last" is triggered,
-     * or null to fall back to the generic tree-walk.
-     */
-    open fun findLastFocusable(rootNode: AccessibilityNodeInfo): AccessibilityNodeInfo? = null
+    ): AccessibilityNodeInfo? = null
 
     /**
      * Content description or text label of the app's primary FAB.
