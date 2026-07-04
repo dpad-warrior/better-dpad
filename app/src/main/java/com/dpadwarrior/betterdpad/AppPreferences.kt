@@ -19,6 +19,7 @@ class AppPreferences(context: Context) {
     private val APP_ENABLED = booleanPreferencesKey("app_enabled")
     private val DEBUG_MODE = booleanPreferencesKey("debug_mode")
     private val FOCUS_HIGHLIGHT_ENABLED = booleanPreferencesKey("focus_highlight_enabled")
+    private val DPAD_MODE_ENABLED = booleanPreferencesKey("dpad_mode_enabled")
     private val JUMP_TO_FIRST_KEY_CODE = intPreferencesKey("jump_to_first_key_code")
     private val JUMP_TO_LAST_KEY_CODE = intPreferencesKey("jump_to_last_key_code")
     private val JUMP_TO_FAB_KEY_CODE = intPreferencesKey("jump_to_fab_key_code")
@@ -39,6 +40,9 @@ class AppPreferences(context: Context) {
 
     val isFocusHighlightEnabled: Flow<Boolean> =
         dataStore.data.map { prefs -> prefs[FOCUS_HIGHLIGHT_ENABLED] ?: false }
+
+    val isDpadModeEnabled: Flow<Boolean> =
+        dataStore.data.map { prefs -> prefs[DPAD_MODE_ENABLED] ?: true }
 
     val jumpToFirstKeyCode: Flow<Int?> =
         dataStore.data.map { prefs -> prefs[JUMP_TO_FIRST_KEY_CODE]?.takeIf { it != NO_BINDING } }
@@ -77,6 +81,10 @@ class AppPreferences(context: Context) {
 
     suspend fun setFocusHighlightEnabled(enabled: Boolean) {
         dataStore.edit { prefs -> prefs[FOCUS_HIGHLIGHT_ENABLED] = enabled }
+    }
+
+    suspend fun setDpadModeEnabled(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[DPAD_MODE_ENABLED] = enabled }
     }
 
     suspend fun setJumpToFirstKeyCode(keyCode: Int?) {

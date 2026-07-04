@@ -62,6 +62,7 @@ class MainView : ComponentActivity() {
                     onDpadRightChange = settingsViewModel::setDpadRight,
                     onDpadSelectChange = settingsViewModel::setDpadSelect,
                     onInputModeModifierChange = settingsViewModel::setInputModeModifier,
+                    onDpadModeToggle = settingsViewModel::setDpadModeEnabled,
                     onRequestShizukuPermission = settingsViewModel::requestShizukuPermission
                 )
             }

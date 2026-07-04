@@ -34,6 +34,7 @@ class BetterDpadAccessibilityService : AccessibilityService() {
     private val appEnabled = AtomicBoolean(true)
     private val debugModeEnabled = AtomicBoolean(false)
     private val focusHighlightEnabled = AtomicBoolean(false)
+    private val dpadModeEnabled = AtomicBoolean(true)
     private val jumpToFirstKeyCode = AtomicReference<Int?>(null)
     private val jumpToLastKeyCode = AtomicReference<Int?>(null)
     private val jumpToFabKeyCode = AtomicReference<Int?>(null)
@@ -143,7 +144,7 @@ class BetterDpadAccessibilityService : AccessibilityService() {
             if (isKeyboardActive) {
                 // Modifier+mapped-key still fires its D-pad action even while a text field is
                 // focused, so the user can navigate without leaving the input.
-                if (event.action == KeyEvent.ACTION_DOWN && isInputModeModifierDown.get()) {
+                if (dpadModeEnabled.get() && event.action == KeyEvent.ACTION_DOWN && isInputModeModifierDown.get()) {
                     val dpadKeyEvent = dpadKeyEventFor(event.keyCode)
                     if (dpadKeyEvent != null) {
                         // At the start/end (or first/last line) of the text, cursor movement
@@ -217,11 +218,13 @@ class BetterDpadAccessibilityService : AccessibilityService() {
                 // Remap an arbitrary key to a real dpad key press, injected via Shizuku. This
                 // works even in apps/screens with no proper accessibility focus tree (custom
                 // UIs, games), unlike a focusSearch()-based approach.
-                val dpadKeyEvent = dpadKeyEventFor(event.keyCode)
-                if (dpadKeyEvent != null && shizukuKeyInjector.state.value == ShizukuState.READY) {
-                    shizukuKeyInjector.sendKeyEvent(dpadKeyEvent)
-                    rootNode.recycle()
-                    return true
+                if (dpadModeEnabled.get()) {
+                    val dpadKeyEvent = dpadKeyEventFor(event.keyCode)
+                    if (dpadKeyEvent != null && shizukuKeyInjector.state.value == ShizukuState.READY) {
+                        shizukuKeyInjector.sendKeyEvent(dpadKeyEvent)
+                        rootNode.recycle()
+                        return true
+                    }
                 }
             }
 
@@ -343,6 +346,7 @@ class BetterDpadAccessibilityService : AccessibilityService() {
             focusHighlightEnabled.set(enabled)
             if (!enabled) focusHighlightOverlay.hide()
         } }
+        serviceScope.launch { prefs.isDpadModeEnabled.collect { dpadModeEnabled.set(it) } }
         serviceScope.launch { prefs.jumpToFirstKeyCode.collect { jumpToFirstKeyCode.set(it) } }
         serviceScope.launch { prefs.jumpToLastKeyCode.collect { jumpToLastKeyCode.set(it) } }
         serviceScope.launch { prefs.jumpToFabKeyCode.collect { jumpToFabKeyCode.set(it) } }

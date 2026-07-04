@@ -36,6 +36,7 @@ fun SettingsList(
     onDpadRightChange: (Int?) -> Unit,
     onDpadSelectChange: (Int?) -> Unit,
     onInputModeModifierChange: (Int?) -> Unit,
+    onDpadModeToggle: (Boolean) -> Unit,
     onRequestShizukuPermission: () -> Unit
 ) {
     Column {
@@ -81,6 +82,12 @@ fun SettingsList(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
+        ListItem(
+            headlineContent = { Text("Enable D-pad remapping") },
+            supportingContent = { Text("Master switch for the bindings below - turn off without losing them") },
+            trailingContent = { Switch(checked = state.dpadModeEnabled, onCheckedChange = onDpadModeToggle) }
+        )
+        HorizontalDivider()
         if (state.shizukuState == ShizukuState.READY) {
             KeyBindingListItem(
                 label = "Map key to D-pad Up",
@@ -171,6 +178,7 @@ private fun SettingsListPreviewDisabled() {
             onDpadRightChange = {},
             onDpadSelectChange = {},
             onInputModeModifierChange = {},
+            onDpadModeToggle = {},
             onRequestShizukuPermission = {}
         )
     }
@@ -207,6 +215,7 @@ private fun SettingsListPreviewWithBindings() {
             onDpadRightChange = {},
             onDpadSelectChange = {},
             onInputModeModifierChange = {},
+            onDpadModeToggle = {},
             onRequestShizukuPermission = {}
         )
     }
@@ -230,6 +239,7 @@ private fun SettingsListPreviewShizukuNeedsPermission() {
             onDpadRightChange = {},
             onDpadSelectChange = {},
             onInputModeModifierChange = {},
+            onDpadModeToggle = {},
             onRequestShizukuPermission = {}
         )
     }

@@ -42,6 +42,7 @@ fun MainScreen(
     onDpadRightChange: (Int?) -> Unit,
     onDpadSelectChange: (Int?) -> Unit,
     onInputModeModifierChange: (Int?) -> Unit,
+    onDpadModeToggle: (Boolean) -> Unit,
     onRequestShizukuPermission: () -> Unit
 ) {
     Scaffold(
@@ -88,6 +89,7 @@ fun MainScreen(
                 onDpadRightChange = onDpadRightChange,
                 onDpadSelectChange = onDpadSelectChange,
                 onInputModeModifierChange = onInputModeModifierChange,
+                onDpadModeToggle = onDpadModeToggle,
                 onRequestShizukuPermission = onRequestShizukuPermission
             )
         }
@@ -114,6 +116,7 @@ fun MainScreenPreview() {
             onDpadRightChange = {},
             onDpadSelectChange = {},
             onInputModeModifierChange = {},
+            onDpadModeToggle = {},
             onRequestShizukuPermission = {}
         )
     }

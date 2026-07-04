@@ -6,6 +6,7 @@ data class SettingsState(
     val appEnabled: Boolean = true,
     val debugMode: Boolean = false,
     val focusHighlightEnabled: Boolean = false,
+    val dpadModeEnabled: Boolean = true,
     val jumpToFirst: Int? = null,
     val jumpToLast: Int? = null,
     val jumpToFab: Int? = null,

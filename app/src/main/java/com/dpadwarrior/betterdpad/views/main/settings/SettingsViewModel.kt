@@ -32,6 +32,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         SettingsState(appEnabled, debugMode, jumpToFirst = jumpToFirst, jumpToLast = jumpToLast, jumpToFab = jumpToFab)
     }.combine(prefs.isFocusHighlightEnabled) { state, focusHighlightEnabled ->
         state.copy(focusHighlightEnabled = focusHighlightEnabled)
+    }.combine(prefs.isDpadModeEnabled) { state, dpadModeEnabled ->
+        state.copy(dpadModeEnabled = dpadModeEnabled)
     }.combine(dpadKeyCodes) { state, codes ->
         state.copy(
             dpadUp = codes.up,
@@ -56,6 +58,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun setFocusHighlightEnabled(enabled: Boolean) {
         viewModelScope.launch { prefs.setFocusHighlightEnabled(enabled) }
+    }
+
+    fun setDpadModeEnabled(enabled: Boolean) {
+        viewModelScope.launch { prefs.setDpadModeEnabled(enabled) }
     }
 
     fun setJumpToFirst(keyCode: Int?) {
