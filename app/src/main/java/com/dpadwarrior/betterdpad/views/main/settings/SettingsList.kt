@@ -9,6 +9,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.dpadwarrior.betterdpad.shizuku.ShizukuState
 import com.dpadwarrior.betterdpad.views.BetterDpadTheme
 
 @Composable
@@ -26,13 +28,28 @@ fun SettingsList(
     onDebugToggle: (Boolean) -> Unit,
     onJumpToFirstChange: (Int?) -> Unit,
     onJumpToLastChange: (Int?) -> Unit,
-    onJumpToFabChange: (Int?) -> Unit
+    onJumpToFabChange: (Int?) -> Unit,
+    onFocusHighlightToggle: (Boolean) -> Unit,
+    onDpadUpChange: (Int?) -> Unit,
+    onDpadDownChange: (Int?) -> Unit,
+    onDpadLeftChange: (Int?) -> Unit,
+    onDpadRightChange: (Int?) -> Unit,
+    onDpadSelectChange: (Int?) -> Unit,
+    onInputModeModifierChange: (Int?) -> Unit,
+    onDpadModeToggle: (Boolean) -> Unit,
+    onRequestShizukuPermission: () -> Unit
 ) {
     Column {
         ListItem(
             headlineContent = { Text("Enable BetterDpad") },
             supportingContent = { Text("Turn on/off the helper functionalities") },
             trailingContent = { Switch(checked = state.appEnabled, onCheckedChange = onAppEnabledToggle) }
+        )
+        HorizontalDivider()
+        ListItem(
+            headlineContent = { Text("Show focus highlight") },
+            supportingContent = { Text("Draws a border around the focused item, for devices whose skin hides it") },
+            trailingContent = { Switch(checked = state.focusHighlightEnabled, onCheckedChange = onFocusHighlightToggle) }
         )
         HorizontalDivider()
         Text(
@@ -60,6 +77,76 @@ fun SettingsList(
         )
         HorizontalDivider()
         Text(
+            text = "D-pad remapping",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+        ListItem(
+            headlineContent = { Text("Enable D-pad remapping") },
+            supportingContent = { Text("Master switch for the bindings below - turn off without losing them") },
+            trailingContent = { Switch(checked = state.dpadModeEnabled, onCheckedChange = onDpadModeToggle) }
+        )
+        HorizontalDivider()
+        if (state.shizukuState == ShizukuState.READY) {
+            KeyBindingListItem(
+                label = "Map key to D-pad Up",
+                keyCode = state.dpadUp,
+                onChange = onDpadUpChange
+            )
+            HorizontalDivider()
+            KeyBindingListItem(
+                label = "Map key to D-pad Down",
+                keyCode = state.dpadDown,
+                onChange = onDpadDownChange
+            )
+            HorizontalDivider()
+            KeyBindingListItem(
+                label = "Map key to D-pad Left",
+                keyCode = state.dpadLeft,
+                onChange = onDpadLeftChange
+            )
+            HorizontalDivider()
+            KeyBindingListItem(
+                label = "Map key to D-pad Right",
+                keyCode = state.dpadRight,
+                onChange = onDpadRightChange
+            )
+            HorizontalDivider()
+            KeyBindingListItem(
+                label = "Map key to D-pad Select",
+                keyCode = state.dpadSelect,
+                onChange = onDpadSelectChange
+            )
+            HorizontalDivider()
+            KeyBindingListItem(
+                label = "Modifier key for use while typing",
+                description = "Hold this with a mapped key to trigger its D-pad action even while a text field is focused",
+                keyCode = state.inputModeModifier,
+                onChange = onInputModeModifierChange
+            )
+            HorizontalDivider()
+        } else {
+            ListItem(
+                headlineContent = { Text("Requires Shizuku") },
+                supportingContent = {
+                    Text(
+                        if (state.shizukuState == ShizukuState.NEEDS_PERMISSION) {
+                            "Grant BetterDpad access to Shizuku to enable D-pad remapping"
+                        } else {
+                            "Install and activate Shizuku (via wireless debugging or root) to enable D-pad remapping"
+                        }
+                    )
+                },
+                trailingContent = {
+                    if (state.shizukuState == ShizukuState.NEEDS_PERMISSION) {
+                        TextButton(onClick = onRequestShizukuPermission) { Text("Grant") }
+                    }
+                }
+            )
+            HorizontalDivider()
+        }
+        Text(
             text = "Advanced",
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -83,7 +170,16 @@ private fun SettingsListPreviewDisabled() {
             onDebugToggle = {},
             onJumpToFirstChange = {},
             onJumpToLastChange = {},
-            onJumpToFabChange = {}
+            onJumpToFabChange = {},
+            onFocusHighlightToggle = {},
+            onDpadUpChange = {},
+            onDpadDownChange = {},
+            onDpadLeftChange = {},
+            onDpadRightChange = {},
+            onDpadSelectChange = {},
+            onInputModeModifierChange = {},
+            onDpadModeToggle = {},
+            onRequestShizukuPermission = {}
         )
     }
 }
@@ -95,15 +191,56 @@ private fun SettingsListPreviewWithBindings() {
         SettingsList(
             state = SettingsState(
                 debugMode = true,
+                focusHighlightEnabled = true,
                 jumpToFirst = AndroidKeyEvent.KEYCODE_POUND,
                 jumpToLast = AndroidKeyEvent.KEYCODE_0,
-                jumpToFab = AndroidKeyEvent.KEYCODE_STAR
+                jumpToFab = AndroidKeyEvent.KEYCODE_STAR,
+                dpadUp = AndroidKeyEvent.KEYCODE_W,
+                dpadDown = AndroidKeyEvent.KEYCODE_S,
+                dpadLeft = AndroidKeyEvent.KEYCODE_A,
+                dpadRight = AndroidKeyEvent.KEYCODE_D,
+                dpadSelect = AndroidKeyEvent.KEYCODE_SPACE,
+                inputModeModifier = AndroidKeyEvent.KEYCODE_SHIFT_LEFT,
+                shizukuState = ShizukuState.READY
             ),
             onAppEnabledToggle = {},
             onDebugToggle = {},
             onJumpToFirstChange = {},
             onJumpToLastChange = {},
-            onJumpToFabChange = {}
+            onJumpToFabChange = {},
+            onFocusHighlightToggle = {},
+            onDpadUpChange = {},
+            onDpadDownChange = {},
+            onDpadLeftChange = {},
+            onDpadRightChange = {},
+            onDpadSelectChange = {},
+            onInputModeModifierChange = {},
+            onDpadModeToggle = {},
+            onRequestShizukuPermission = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Shizuku needs permission")
+@Composable
+private fun SettingsListPreviewShizukuNeedsPermission() {
+    BetterDpadTheme {
+        SettingsList(
+            state = SettingsState(shizukuState = ShizukuState.NEEDS_PERMISSION),
+            onAppEnabledToggle = {},
+            onDebugToggle = {},
+            onJumpToFirstChange = {},
+            onJumpToLastChange = {},
+            onJumpToFabChange = {},
+            onFocusHighlightToggle = {},
+            onDpadUpChange = {},
+            onDpadDownChange = {},
+            onDpadLeftChange = {},
+            onDpadRightChange = {},
+            onDpadSelectChange = {},
+            onInputModeModifierChange = {},
+            onDpadModeToggle = {},
+            onRequestShizukuPermission = {}
         )
     }
 }
@@ -112,12 +249,14 @@ private fun SettingsListPreviewWithBindings() {
 private fun KeyBindingListItem(
     label: String,
     keyCode: Int?,
-    onChange: (Int?) -> Unit
+    onChange: (Int?) -> Unit,
+    description: String? = null
 ) {
     var showDialog by remember { mutableStateOf(false) }
 
     ListItem(
         headlineContent = { Text(label) },
+        supportingContent = description?.let { { Text(it) } },
         trailingContent = {
             Text(
                 text = keyCode

@@ -34,7 +34,16 @@ fun MainScreen(
     onDebugToggle: (Boolean) -> Unit,
     onJumpToFirstChange: (Int?) -> Unit,
     onJumpToLastChange: (Int?) -> Unit,
-    onJumpToFabChange: (Int?) -> Unit
+    onJumpToFabChange: (Int?) -> Unit,
+    onFocusHighlightToggle: (Boolean) -> Unit,
+    onDpadUpChange: (Int?) -> Unit,
+    onDpadDownChange: (Int?) -> Unit,
+    onDpadLeftChange: (Int?) -> Unit,
+    onDpadRightChange: (Int?) -> Unit,
+    onDpadSelectChange: (Int?) -> Unit,
+    onInputModeModifierChange: (Int?) -> Unit,
+    onDpadModeToggle: (Boolean) -> Unit,
+    onRequestShizukuPermission: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -72,7 +81,16 @@ fun MainScreen(
                 onDebugToggle = onDebugToggle,
                 onJumpToFirstChange = onJumpToFirstChange,
                 onJumpToLastChange = onJumpToLastChange,
-                onJumpToFabChange = onJumpToFabChange
+                onJumpToFabChange = onJumpToFabChange,
+                onFocusHighlightToggle = onFocusHighlightToggle,
+                onDpadUpChange = onDpadUpChange,
+                onDpadDownChange = onDpadDownChange,
+                onDpadLeftChange = onDpadLeftChange,
+                onDpadRightChange = onDpadRightChange,
+                onDpadSelectChange = onDpadSelectChange,
+                onInputModeModifierChange = onInputModeModifierChange,
+                onDpadModeToggle = onDpadModeToggle,
+                onRequestShizukuPermission = onRequestShizukuPermission
             )
         }
     }
@@ -90,7 +108,16 @@ fun MainScreenPreview() {
             onDebugToggle = {},
             onJumpToFirstChange = {},
             onJumpToLastChange = {},
-            onJumpToFabChange = {}
+            onJumpToFabChange = {},
+            onFocusHighlightToggle = {},
+            onDpadUpChange = {},
+            onDpadDownChange = {},
+            onDpadLeftChange = {},
+            onDpadRightChange = {},
+            onDpadSelectChange = {},
+            onInputModeModifierChange = {},
+            onDpadModeToggle = {},
+            onRequestShizukuPermission = {}
         )
     }
 }

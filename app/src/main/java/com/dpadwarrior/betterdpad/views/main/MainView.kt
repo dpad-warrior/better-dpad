@@ -54,7 +54,16 @@ class MainView : ComponentActivity() {
                     onDebugToggle = settingsViewModel::setDebugMode,
                     onJumpToFirstChange = settingsViewModel::setJumpToFirst,
                     onJumpToLastChange = settingsViewModel::setJumpToLast,
-                    onJumpToFabChange = settingsViewModel::setJumpToFab
+                    onJumpToFabChange = settingsViewModel::setJumpToFab,
+                    onFocusHighlightToggle = settingsViewModel::setFocusHighlightEnabled,
+                    onDpadUpChange = settingsViewModel::setDpadUp,
+                    onDpadDownChange = settingsViewModel::setDpadDown,
+                    onDpadLeftChange = settingsViewModel::setDpadLeft,
+                    onDpadRightChange = settingsViewModel::setDpadRight,
+                    onDpadSelectChange = settingsViewModel::setDpadSelect,
+                    onInputModeModifierChange = settingsViewModel::setInputModeModifier,
+                    onDpadModeToggle = settingsViewModel::setDpadModeEnabled,
+                    onRequestShizukuPermission = settingsViewModel::requestShizukuPermission
                 )
             }
         }
