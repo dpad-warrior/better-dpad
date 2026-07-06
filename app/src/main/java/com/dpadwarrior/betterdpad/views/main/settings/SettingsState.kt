@@ -1,5 +1,6 @@
 package com.dpadwarrior.betterdpad.views.main.settings
 
+import com.dpadwarrior.betterdpad.accessibility.QuickJumpHintStyle
 import com.dpadwarrior.betterdpad.shizuku.ShizukuState
 
 data class SettingsState(
@@ -10,6 +11,8 @@ data class SettingsState(
     val jumpToFirst: Int? = null,
     val jumpToLast: Int? = null,
     val jumpToFab: Int? = null,
+    val quickJump: Int? = null,
+    val quickJumpHintStyle: QuickJumpHintStyle = QuickJumpHintStyle.NUMBERS,
     val dpadUp: Int? = null,
     val dpadDown: Int? = null,
     val dpadLeft: Int? = null,

@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.dpadwarrior.betterdpad.accessibility.QuickJumpHintStyle
 import com.dpadwarrior.betterdpad.views.BetterDpadTheme
 import com.dpadwarrior.betterdpad.views.main.settings.SettingsList
 import com.dpadwarrior.betterdpad.views.main.settings.SettingsState
@@ -35,6 +36,8 @@ fun MainScreen(
     onJumpToFirstChange: (Int?) -> Unit,
     onJumpToLastChange: (Int?) -> Unit,
     onJumpToFabChange: (Int?) -> Unit,
+    onQuickJumpChange: (Int?) -> Unit,
+    onQuickJumpHintStyleChange: (QuickJumpHintStyle) -> Unit,
     onFocusHighlightToggle: (Boolean) -> Unit,
     onDpadUpChange: (Int?) -> Unit,
     onDpadDownChange: (Int?) -> Unit,
@@ -82,6 +85,8 @@ fun MainScreen(
                 onJumpToFirstChange = onJumpToFirstChange,
                 onJumpToLastChange = onJumpToLastChange,
                 onJumpToFabChange = onJumpToFabChange,
+                onQuickJumpChange = onQuickJumpChange,
+                onQuickJumpHintStyleChange = onQuickJumpHintStyleChange,
                 onFocusHighlightToggle = onFocusHighlightToggle,
                 onDpadUpChange = onDpadUpChange,
                 onDpadDownChange = onDpadDownChange,
@@ -109,6 +114,8 @@ fun MainScreenPreview() {
             onJumpToFirstChange = {},
             onJumpToLastChange = {},
             onJumpToFabChange = {},
+            onQuickJumpChange = {},
+            onQuickJumpHintStyleChange = {},
             onFocusHighlightToggle = {},
             onDpadUpChange = {},
             onDpadDownChange = {},

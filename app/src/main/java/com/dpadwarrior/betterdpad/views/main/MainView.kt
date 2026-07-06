@@ -55,6 +55,8 @@ class MainView : ComponentActivity() {
                     onJumpToFirstChange = settingsViewModel::setJumpToFirst,
                     onJumpToLastChange = settingsViewModel::setJumpToLast,
                     onJumpToFabChange = settingsViewModel::setJumpToFab,
+                    onQuickJumpChange = settingsViewModel::setQuickJump,
+                    onQuickJumpHintStyleChange = settingsViewModel::setQuickJumpHintStyle,
                     onFocusHighlightToggle = settingsViewModel::setFocusHighlightEnabled,
                     onDpadUpChange = settingsViewModel::setDpadUp,
                     onDpadDownChange = settingsViewModel::setDpadDown,

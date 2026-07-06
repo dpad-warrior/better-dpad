@@ -81,7 +81,7 @@ class FocusHighlightOverlay(context: Context) {
  * color on API 31+, falling back to the M3 baseline palette) so the overlay's accent matches
  * the rest of the app, even though it's drawn outside of Compose over another app's window.
  */
-private fun resolveFocusPrimaryColor(context: Context): Int {
+internal fun resolveFocusPrimaryColor(context: Context): Int {
     val isDarkTheme = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
         Configuration.UI_MODE_NIGHT_YES
     val colorScheme = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
