@@ -38,6 +38,7 @@ class BetterDpadAccessibilityService : AccessibilityService() {
     private val jumpToFirstKeyCode = AtomicReference<Int?>(null)
     private val jumpToLastKeyCode = AtomicReference<Int?>(null)
     private val jumpToFabKeyCode = AtomicReference<Int?>(null)
+    private val quickJumpKeyCode = AtomicReference<Int?>(null)
     private val dpadUpKeyCode = AtomicReference<Int?>(null)
     private val dpadDownKeyCode = AtomicReference<Int?>(null)
     private val dpadLeftKeyCode = AtomicReference<Int?>(null)
@@ -48,8 +49,25 @@ class BetterDpadAccessibilityService : AccessibilityService() {
 
     private val appConfigs = AppConfigLoader.configs
     private val focusHighlightOverlay by lazy { FocusHighlightOverlay(this) }
+    private val quickJumpOverlay by lazy { QuickJumpOverlay(this) }
     private val shizukuKeyInjector: ShizukuKeyInjector
         get() = (application as BetterDpad).shizukuKeyInjector
+
+    // Non-null while Quick Jump mode is active. Only touched from onKeyEvent/onAccessibilityEvent,
+    // which the platform always calls on the service's main thread, so no synchronization needed.
+    // Holds every focusable target across all pages; a digit press jumps within the current page.
+    private data class QuickJumpTarget(val node: AccessibilityNodeInfo, val boundsInScreen: Rect)
+    private var quickJumpTargets: List<QuickJumpTarget>? = null
+    private var quickJumpPageIndex: Int = 0
+    private val quickJumpHintStyle = AtomicReference(QuickJumpHintStyle.NUMBERS)
+
+    // Letters give 26 hints per page (A-Z) instead of 10 (0-9) - handy on QWERTY hardware
+    // keyboards where every hint is a single direct keypress with no modifier chord needed.
+    private val quickJumpPageSize: Int
+        get() = when (quickJumpHintStyle.get()) {
+            QuickJumpHintStyle.LETTERS -> 26
+            QuickJumpHintStyle.NUMBERS -> 10
+        }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         when (event?.eventType) {
@@ -130,6 +148,14 @@ class BetterDpadAccessibilityService : AccessibilityService() {
         }
 
         rootInActiveWindow?.let { rootNode ->
+            // Quick Jump is modal: once active it owns every subsequent key event (digits,
+            // paging, cancel) until it jumps or is cancelled/toggled off again.
+            if (quickJumpTargets != null) {
+                handleQuickJumpKeyEvent(event)
+                rootNode.recycle()
+                return true
+            }
+
             // Should not intercept if user is interacting with system UI
             if (rootNode.packageName == "com.android.systemui") {
                 Log.d("BetterDpad", "System UI is active. Skipping interception")
@@ -213,6 +239,15 @@ class BetterDpadAccessibilityService : AccessibilityService() {
                     rootNode.recycle()
                     if (handled) return true
                     return super.onKeyEvent(event)
+                }
+
+                // Toggle Quick Jump: numbers every focusable element on screen so the user can
+                // type a number + confirm to jump straight to it.
+                val quickJumpKey = quickJumpKeyCode.get()
+                if (quickJumpKey != null && event.keyCode == quickJumpKey) {
+                    enterQuickJump(rootNode)
+                    rootNode.recycle()
+                    return true
                 }
 
                 // Remap an arbitrary key to a real dpad key press, injected via Shizuku. This
@@ -299,6 +334,121 @@ class BetterDpadAccessibilityService : AccessibilityService() {
         }
     }
 
+    private fun enterQuickJump(rootNode: AccessibilityNodeInfo) {
+        val focusables = mutableListOf<AccessibilityNodeInfo>()
+        collectFocusables(rootNode, focusables)
+
+        val visible = focusables.filter { it.isVisibleToUser }
+        focusables.filterNot { it.isVisibleToUser }.forEach { it.recycle() }
+
+        // Bucket by row (tolerating small alignment differences within the same visual row) so
+        // numbering reads top-to-bottom, then left-to-right - matching how a user scans a screen.
+        val rowBucketPx = (32 * resources.displayMetrics.density).toInt().coerceAtLeast(1)
+        val targets = visible.map { node ->
+            val bounds = Rect()
+            node.getBoundsInScreen(bounds)
+            QuickJumpTarget(node, bounds)
+        }.sortedWith(compareBy({ it.boundsInScreen.top / rowBucketPx }, { it.boundsInScreen.left }))
+        if (targets.isEmpty()) return
+
+        quickJumpTargets = targets
+        quickJumpPageIndex = 0
+        showQuickJumpPage()
+        Log.d("BetterDpad", "Quick Jump entered with ${targets.size} targets over ${quickJumpPageCount()} page(s)")
+    }
+
+    private fun exitQuickJump() {
+        quickJumpTargets?.forEach { it.node.recycle() }
+        quickJumpTargets = null
+        quickJumpPageIndex = 0
+        quickJumpOverlay.hide()
+    }
+
+    private fun quickJumpPageCount(): Int {
+        val total = quickJumpTargets?.size ?: 0
+        return if (total == 0) 0 else (total + quickJumpPageSize - 1) / quickJumpPageSize
+    }
+
+    private fun quickJumpHintLabel(index: Int): String = when (quickJumpHintStyle.get()) {
+        QuickJumpHintStyle.LETTERS -> ('A' + index).toString()
+        QuickJumpHintStyle.NUMBERS -> index.toString()
+    }
+
+    private fun showQuickJumpPage() {
+        val targets = quickJumpTargets ?: return
+        val pageSize = quickJumpPageSize
+        val pageStart = quickJumpPageIndex * pageSize
+        val pageTargets = targets.subList(pageStart, (pageStart + pageSize).coerceAtMost(targets.size))
+        val labels = pageTargets.mapIndexed { index, target -> quickJumpHintLabel(index) to target.boundsInScreen }
+        quickJumpOverlay.show(labels, quickJumpPageIndex + 1, quickJumpPageCount())
+    }
+
+    private fun handleQuickJumpKeyEvent(event: KeyEvent) {
+        if (event.action != KeyEvent.ACTION_DOWN) return
+
+        val toggleKey = quickJumpKeyCode.get()
+        if (toggleKey != null && event.keyCode == toggleKey) {
+            Log.d("BetterDpad", "Quick Jump cancelled via toggle key")
+            exitQuickJump()
+            return
+        }
+        if (event.keyCode == KeyEvent.KEYCODE_BACK) {
+            Log.d("BetterDpad", "Quick Jump cancelled via back")
+            exitQuickJump()
+            return
+        }
+
+        // Checked before the raw-keyCode dpad paging check below: on a hardware keyboard, the
+        // same physical letter key can simultaneously be configured as a dpad direction AND, via
+        // an Alt/modifier chord, resolve to a hint character - the key character map result (which
+        // reflects the currently-held modifier state) disambiguates which one the user meant. A
+        // hint match always jumps immediately, no confirm key needed.
+        val hintIndex = resolveQuickJumpHintIndex(event)
+        if (hintIndex != null) {
+            jumpToQuickJumpHint(hintIndex)
+            return
+        }
+
+        // Page browsing accepts either a real hardware dpad press or the user's remapped
+        // left/right binding, same as the rest of the app's dpad handling.
+        if (event.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT || event.keyCode == dpadRightKeyCode.get()) {
+            if (quickJumpPageIndex < quickJumpPageCount() - 1) {
+                quickJumpPageIndex++
+                showQuickJumpPage()
+            }
+            return
+        }
+        if (event.keyCode == KeyEvent.KEYCODE_DPAD_LEFT || event.keyCode == dpadLeftKeyCode.get()) {
+            if (quickJumpPageIndex > 0) {
+                quickJumpPageIndex--
+                showQuickJumpPage()
+            }
+            return
+        }
+
+        Log.d("BetterDpad", "Quick Jump: unhandled key code ${event.keyCode}")
+    }
+
+    // Resolved via the key character map (not a raw keyCode range check): on hardware keyboards
+    // with a modifier-chord number row (e.g. Alt+letter), the physical key is a letter - only the
+    // character map, given the currently-held meta state, knows what it actually produces.
+    private fun resolveQuickJumpHintIndex(event: KeyEvent): Int? {
+        val resolvedChar = event.unicodeChar.toChar()
+        return when (quickJumpHintStyle.get()) {
+            QuickJumpHintStyle.LETTERS -> resolvedChar.uppercaseChar().takeIf { it in 'A'..'Z' }?.minus('A')
+            QuickJumpHintStyle.NUMBERS -> resolvedChar.takeIf { it in '0'..'9' }?.minus('0')
+        }
+    }
+
+    private fun jumpToQuickJumpHint(hintIndex: Int) {
+        val targets = quickJumpTargets ?: return
+        val index = quickJumpPageIndex * quickJumpPageSize + hintIndex
+        val target = targets.getOrNull(index)
+        Log.d("BetterDpad", "Quick Jump hint $hintIndex on page $quickJumpPageIndex -> $target")
+        target?.node?.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+        exitQuickJump()
+    }
+
     private fun findFirstFocusable(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
         if (node.isFocusable) return node
         for (i in 0 until node.childCount) {
@@ -339,7 +489,10 @@ class BetterDpadAccessibilityService : AccessibilityService() {
         val prefs = (application as BetterDpad).preferences
         serviceScope.launch { prefs.isAppEnabled.collect { enabled ->
             appEnabled.set(enabled)
-            if (!enabled) focusHighlightOverlay.hide()
+            if (!enabled) {
+                focusHighlightOverlay.hide()
+                exitQuickJump()
+            }
         } }
         serviceScope.launch { prefs.isDebugModeEnabled.collect { debugModeEnabled.set(it) } }
         serviceScope.launch { prefs.isFocusHighlightEnabled.collect { enabled ->
@@ -350,6 +503,8 @@ class BetterDpadAccessibilityService : AccessibilityService() {
         serviceScope.launch { prefs.jumpToFirstKeyCode.collect { jumpToFirstKeyCode.set(it) } }
         serviceScope.launch { prefs.jumpToLastKeyCode.collect { jumpToLastKeyCode.set(it) } }
         serviceScope.launch { prefs.jumpToFabKeyCode.collect { jumpToFabKeyCode.set(it) } }
+        serviceScope.launch { prefs.quickJumpKeyCode.collect { quickJumpKeyCode.set(it) } }
+        serviceScope.launch { prefs.quickJumpHintStyle.collect { quickJumpHintStyle.set(it) } }
         serviceScope.launch { prefs.dpadUpKeyCode.collect { dpadUpKeyCode.set(it) } }
         serviceScope.launch { prefs.dpadDownKeyCode.collect { dpadDownKeyCode.set(it) } }
         serviceScope.launch { prefs.dpadLeftKeyCode.collect { dpadLeftKeyCode.set(it) } }
@@ -361,6 +516,7 @@ class BetterDpadAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         super.onDestroy()
         focusHighlightOverlay.hide()
+        exitQuickJump()
         serviceScope.cancel()
     }
 

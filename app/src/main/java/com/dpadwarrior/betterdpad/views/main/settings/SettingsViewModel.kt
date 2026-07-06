@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.dpadwarrior.betterdpad.BetterDpad
+import com.dpadwarrior.betterdpad.accessibility.QuickJumpHintStyle
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -30,6 +31,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         prefs.jumpToFabKeyCode
     ) { appEnabled, debugMode, jumpToFirst, jumpToLast, jumpToFab ->
         SettingsState(appEnabled, debugMode, jumpToFirst = jumpToFirst, jumpToLast = jumpToLast, jumpToFab = jumpToFab)
+    }.combine(prefs.quickJumpKeyCode) { state, quickJump ->
+        state.copy(quickJump = quickJump)
+    }.combine(prefs.quickJumpHintStyle) { state, quickJumpHintStyle ->
+        state.copy(quickJumpHintStyle = quickJumpHintStyle)
     }.combine(prefs.isFocusHighlightEnabled) { state, focusHighlightEnabled ->
         state.copy(focusHighlightEnabled = focusHighlightEnabled)
     }.combine(prefs.isDpadModeEnabled) { state, dpadModeEnabled ->
@@ -74,6 +79,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun setJumpToFab(keyCode: Int?) {
         viewModelScope.launch { prefs.setJumpToFabKeyCode(keyCode) }
+    }
+
+    fun setQuickJump(keyCode: Int?) {
+        viewModelScope.launch { prefs.setQuickJumpKeyCode(keyCode) }
+    }
+
+    fun setQuickJumpHintStyle(style: QuickJumpHintStyle) {
+        viewModelScope.launch { prefs.setQuickJumpHintStyle(style) }
     }
 
     fun setDpadUp(keyCode: Int?) {

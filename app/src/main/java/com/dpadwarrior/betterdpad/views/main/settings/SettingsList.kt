@@ -2,8 +2,11 @@ package com.dpadwarrior.betterdpad.views.main.settings
 
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -18,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.dpadwarrior.betterdpad.accessibility.QuickJumpHintStyle
 import com.dpadwarrior.betterdpad.shizuku.ShizukuState
 import com.dpadwarrior.betterdpad.views.BetterDpadTheme
 
@@ -29,6 +33,8 @@ fun SettingsList(
     onJumpToFirstChange: (Int?) -> Unit,
     onJumpToLastChange: (Int?) -> Unit,
     onJumpToFabChange: (Int?) -> Unit,
+    onQuickJumpChange: (Int?) -> Unit,
+    onQuickJumpHintStyleChange: (QuickJumpHintStyle) -> Unit,
     onFocusHighlightToggle: (Boolean) -> Unit,
     onDpadUpChange: (Int?) -> Unit,
     onDpadDownChange: (Int?) -> Unit,
@@ -74,6 +80,18 @@ fun SettingsList(
             label = "Jump to FAB",
             keyCode = state.jumpToFab,
             onChange = onJumpToFabChange
+        )
+        HorizontalDivider()
+        KeyBindingListItem(
+            label = "Quick Jump",
+            description = "Labels every focusable element on screen - type its key to jump straight to it",
+            keyCode = state.quickJump,
+            onChange = onQuickJumpChange
+        )
+        HorizontalDivider()
+        QuickJumpHintStyleListItem(
+            style = state.quickJumpHintStyle,
+            onChange = onQuickJumpHintStyleChange
         )
         HorizontalDivider()
         Text(
@@ -171,6 +189,8 @@ private fun SettingsListPreviewDisabled() {
             onJumpToFirstChange = {},
             onJumpToLastChange = {},
             onJumpToFabChange = {},
+            onQuickJumpChange = {},
+            onQuickJumpHintStyleChange = {},
             onFocusHighlightToggle = {},
             onDpadUpChange = {},
             onDpadDownChange = {},
@@ -201,6 +221,7 @@ private fun SettingsListPreviewWithBindings() {
                 dpadRight = AndroidKeyEvent.KEYCODE_D,
                 dpadSelect = AndroidKeyEvent.KEYCODE_SPACE,
                 inputModeModifier = AndroidKeyEvent.KEYCODE_SHIFT_LEFT,
+                quickJumpHintStyle = QuickJumpHintStyle.LETTERS,
                 shizukuState = ShizukuState.READY
             ),
             onAppEnabledToggle = {},
@@ -208,6 +229,8 @@ private fun SettingsListPreviewWithBindings() {
             onJumpToFirstChange = {},
             onJumpToLastChange = {},
             onJumpToFabChange = {},
+            onQuickJumpChange = {},
+            onQuickJumpHintStyleChange = {},
             onFocusHighlightToggle = {},
             onDpadUpChange = {},
             onDpadDownChange = {},
@@ -232,6 +255,8 @@ private fun SettingsListPreviewShizukuNeedsPermission() {
             onJumpToFirstChange = {},
             onJumpToLastChange = {},
             onJumpToFabChange = {},
+            onQuickJumpChange = {},
+            onQuickJumpHintStyleChange = {},
             onFocusHighlightToggle = {},
             onDpadUpChange = {},
             onDpadDownChange = {},
@@ -278,5 +303,47 @@ private fun KeyBindingListItem(
                 showDialog = false
             }
         )
+    }
+}
+
+private val QuickJumpHintStyle.label: String
+    get() = when (this) {
+        QuickJumpHintStyle.NUMBERS -> "Numbers"
+        QuickJumpHintStyle.LETTERS -> "Letters"
+    }
+
+@Composable
+private fun QuickJumpHintStyleListItem(
+    style: QuickJumpHintStyle,
+    onChange: (QuickJumpHintStyle) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        ListItem(
+            headlineContent = { Text("Quick Jump hint style") },
+            supportingContent = {
+                Text("Numbers (0-9, 10 per page) or letters (A-Z, 26 per page) - letters suit QWERTY hardware keyboards better")
+            },
+            trailingContent = {
+                Text(
+                    text = style.label,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            modifier = Modifier.clickable { expanded = true }
+        )
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            QuickJumpHintStyle.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option.label) },
+                    onClick = {
+                        onChange(option)
+                        expanded = false
+                    }
+                )
+            }
+        }
     }
 }
