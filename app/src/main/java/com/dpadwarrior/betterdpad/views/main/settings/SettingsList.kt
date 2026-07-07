@@ -41,7 +41,6 @@ fun SettingsList(
     onDpadLeftChange: (Int?) -> Unit,
     onDpadRightChange: (Int?) -> Unit,
     onDpadSelectChange: (Int?) -> Unit,
-    onInputModeModifierChange: (Int?) -> Unit,
     onDpadModeToggle: (Boolean) -> Unit,
     onRequestShizukuPermission: () -> Unit
 ) {
@@ -137,13 +136,6 @@ fun SettingsList(
                 onChange = onDpadSelectChange
             )
             HorizontalDivider()
-            KeyBindingListItem(
-                label = "Modifier key for use while typing",
-                description = "Hold this with a mapped key to trigger its D-pad action even while a text field is focused",
-                keyCode = state.inputModeModifier,
-                onChange = onInputModeModifierChange
-            )
-            HorizontalDivider()
         } else {
             ListItem(
                 headlineContent = { Text("Requires Shizuku") },
@@ -197,7 +189,6 @@ private fun SettingsListPreviewDisabled() {
             onDpadLeftChange = {},
             onDpadRightChange = {},
             onDpadSelectChange = {},
-            onInputModeModifierChange = {},
             onDpadModeToggle = {},
             onRequestShizukuPermission = {}
         )
@@ -220,7 +211,6 @@ private fun SettingsListPreviewWithBindings() {
                 dpadLeft = AndroidKeyEvent.KEYCODE_A,
                 dpadRight = AndroidKeyEvent.KEYCODE_D,
                 dpadSelect = AndroidKeyEvent.KEYCODE_SPACE,
-                inputModeModifier = AndroidKeyEvent.KEYCODE_SHIFT_LEFT,
                 quickJumpHintStyle = QuickJumpHintStyle.LETTERS,
                 shizukuState = ShizukuState.READY
             ),
@@ -237,7 +227,6 @@ private fun SettingsListPreviewWithBindings() {
             onDpadLeftChange = {},
             onDpadRightChange = {},
             onDpadSelectChange = {},
-            onInputModeModifierChange = {},
             onDpadModeToggle = {},
             onRequestShizukuPermission = {}
         )
@@ -263,7 +252,6 @@ private fun SettingsListPreviewShizukuNeedsPermission() {
             onDpadLeftChange = {},
             onDpadRightChange = {},
             onDpadSelectChange = {},
-            onInputModeModifierChange = {},
             onDpadModeToggle = {},
             onRequestShizukuPermission = {}
         )

@@ -18,6 +18,5 @@ data class SettingsState(
     val dpadLeft: Int? = null,
     val dpadRight: Int? = null,
     val dpadSelect: Int? = null,
-    val inputModeModifier: Int? = null,
     val shizukuState: ShizukuState = ShizukuState.UNAVAILABLE
 )
