@@ -32,7 +32,6 @@ class AppPreferences(context: Context) {
     private val DPAD_LEFT_KEY_CODE = intPreferencesKey("dpad_left_key_code")
     private val DPAD_RIGHT_KEY_CODE = intPreferencesKey("dpad_right_key_code")
     private val DPAD_SELECT_KEY_CODE = intPreferencesKey("dpad_select_key_code")
-    private val INPUT_MODE_MODIFIER_KEY_CODE = intPreferencesKey("input_mode_modifier_key_code")
 
     private val NO_BINDING = -1
 
@@ -81,9 +80,6 @@ class AppPreferences(context: Context) {
 
     val dpadSelectKeyCode: Flow<Int?> =
         dataStore.data.map { prefs -> prefs[DPAD_SELECT_KEY_CODE]?.takeIf { it != NO_BINDING } }
-
-    val inputModeModifierKeyCode: Flow<Int?> =
-        dataStore.data.map { prefs -> prefs[INPUT_MODE_MODIFIER_KEY_CODE]?.takeIf { it != NO_BINDING } }
 
     suspend fun setAppEnabled(enabled: Boolean) {
         dataStore.edit { prefs -> prefs[APP_ENABLED] = enabled }
@@ -139,9 +135,5 @@ class AppPreferences(context: Context) {
 
     suspend fun setDpadSelectKeyCode(keyCode: Int?) {
         dataStore.edit { prefs -> prefs[DPAD_SELECT_KEY_CODE] = keyCode ?: NO_BINDING }
-    }
-
-    suspend fun setInputModeModifierKeyCode(keyCode: Int?) {
-        dataStore.edit { prefs -> prefs[INPUT_MODE_MODIFIER_KEY_CODE] = keyCode ?: NO_BINDING }
     }
 }

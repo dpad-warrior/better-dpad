@@ -47,8 +47,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             dpadRight = codes.right,
             dpadSelect = codes.select
         )
-    }.combine(prefs.inputModeModifierKeyCode) { state, inputModeModifier ->
-        state.copy(inputModeModifier = inputModeModifier)
     }.combine(shizukuKeyInjector.state) { state, shizukuState ->
         state.copy(shizukuState = shizukuState)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsState())
@@ -107,10 +105,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun setDpadSelect(keyCode: Int?) {
         viewModelScope.launch { prefs.setDpadSelectKeyCode(keyCode) }
-    }
-
-    fun setInputModeModifier(keyCode: Int?) {
-        viewModelScope.launch { prefs.setInputModeModifierKeyCode(keyCode) }
     }
 
     fun requestShizukuPermission() {

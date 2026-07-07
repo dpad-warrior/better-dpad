@@ -44,7 +44,6 @@ fun MainScreen(
     onDpadLeftChange: (Int?) -> Unit,
     onDpadRightChange: (Int?) -> Unit,
     onDpadSelectChange: (Int?) -> Unit,
-    onInputModeModifierChange: (Int?) -> Unit,
     onDpadModeToggle: (Boolean) -> Unit,
     onRequestShizukuPermission: () -> Unit
 ) {
@@ -93,7 +92,6 @@ fun MainScreen(
                 onDpadLeftChange = onDpadLeftChange,
                 onDpadRightChange = onDpadRightChange,
                 onDpadSelectChange = onDpadSelectChange,
-                onInputModeModifierChange = onInputModeModifierChange,
                 onDpadModeToggle = onDpadModeToggle,
                 onRequestShizukuPermission = onRequestShizukuPermission
             )
@@ -122,7 +120,6 @@ fun MainScreenPreview() {
             onDpadLeftChange = {},
             onDpadRightChange = {},
             onDpadSelectChange = {},
-            onInputModeModifierChange = {},
             onDpadModeToggle = {},
             onRequestShizukuPermission = {}
         )

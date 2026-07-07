@@ -7,6 +7,7 @@ import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
 import com.dpadwarrior.betterdpad.BetterDpad
 import com.dpadwarrior.betterdpad.accessibility.appconfigs.AppAccessibilityConfig
 import com.dpadwarrior.betterdpad.accessibility.appconfigs.AppConfigLoader
@@ -44,8 +45,15 @@ class BetterDpadAccessibilityService : AccessibilityService() {
     private val dpadLeftKeyCode = AtomicReference<Int?>(null)
     private val dpadRightKeyCode = AtomicReference<Int?>(null)
     private val dpadSelectKeyCode = AtomicReference<Int?>(null)
-    private val inputModeModifierKeyCode = AtomicReference<Int?>(null)
-    private val isInputModeModifierDown = AtomicBoolean(false)
+
+    // True while Typing Mode is active: suspends all interception so mapped keys type their
+    // literal character normally. Only touched from onKeyEvent, always called on the service's
+    // main thread, so no synchronization needed. See onKeyEvent for entry/exit conditions.
+    private var isTypingModeActive = false
+
+    // Last-seen isImeVisible() result, used to detect the true->false->true transition rather
+    // than the current level - see onKeyEvent's typing mode entry check.
+    private var wasImeVisible = false
 
     private val appConfigs = AppConfigLoader.configs
     private val focusHighlightOverlay by lazy { FocusHighlightOverlay(this) }
@@ -127,14 +135,6 @@ class BetterDpadAccessibilityService : AccessibilityService() {
     override fun onKeyEvent(event: KeyEvent?): Boolean {
         if (event == null) return super.onKeyEvent(event)
 
-        // Track the input-mode modifier's held state unconditionally (even while keyboard is
-        // active) so a mapped key pressed alongside it can override the keyboard-active skip
-        // below. Never consumed here - its own down/up always passes through for normal typing.
-        val modifierKey = inputModeModifierKeyCode.get()
-        if (modifierKey != null && event.keyCode == modifierKey) {
-            isInputModeModifierDown.set(event.action == KeyEvent.ACTION_DOWN)
-        }
-
         // Pass all keys through when the app is disabled.
         if (!appEnabled.get()) {
             Log.d("BetterDpad", "App is disabled. Skipping")
@@ -162,33 +162,73 @@ class BetterDpadAccessibilityService : AccessibilityService() {
                 return super.onKeyEvent(event)
             }
 
-            // Don't intercept while the soft keyboard is active (editable text field has focus).
-            // TODO: this logic needs more refinement. Extract this into an utility function?
+            // Typing Mode: suspends all interception so mapped keys type their literal
+            // character normally - needed because dpad-remap keys otherwise always act as dpad
+            // (never as themselves). Entered automatically, either when a real on-screen
+            // keyboard appears, or (for hardware-keyboard devices where no IME ever pops up)
+            // when the user presses D-pad Select on an editable field - the universal "start
+            // editing this field" gesture. Exited by pressing Back (still passed through
+            // normally below, so the app's own Back handling - closing the IME, navigating
+            // away, etc - behaves as usual) or if focus otherwise leaves the field.
             val inputFocusedNode = rootNode.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-            val isKeyboardActive = inputFocusedNode?.isEditable == true
+            val isFocusedEditable = inputFocusedNode?.isEditable == true
             inputFocusedNode?.recycle()
-            if (isKeyboardActive) {
-                // Modifier+mapped-key still fires its D-pad action even while a text field is
-                // focused, so the user can navigate without leaving the input.
-                if (dpadModeEnabled.get() && event.action == KeyEvent.ACTION_DOWN && isInputModeModifierDown.get()) {
-                    val dpadKeyEvent = dpadKeyEventFor(event.keyCode)
-                    if (dpadKeyEvent != null) {
-                        // At the start/end (or first/last line) of the text, cursor movement
-                        // would be a no-op - move accessibility focus to the previous/next
-                        // element instead so the user doesn't have to exit the field some other
-                        // way first.
-                        if (tryExitInputAtBoundary(rootNode, dpadKeyEvent)) {
-                            rootNode.recycle()
-                            return true
-                        }
-                        if (shizukuKeyInjector.state.value == ShizukuState.READY) {
-                            Log.d("BetterDpad", "Modifier override while keyboard active: $dpadKeyEvent")
-                            shizukuKeyInjector.sendKeyEvent(dpadKeyEvent)
-                            rootNode.recycle()
-                            return true
-                        }
+
+            val isBackPress = event.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_BACK
+
+            if (isTypingModeActive && (!isFocusedEditable || isBackPress)) {
+                Log.d("BetterDpad", "Typing mode exited")
+                isTypingModeActive = false
+            }
+
+            // isImeVisible() lags behind the actual IME state for a while after Back closes it -
+            // the window doesn't disappear from getWindows() the instant Back is processed, so a
+            // level check ("is it visible right now") would immediately re-enter typing mode on
+            // whichever keystroke happens to land before the stale reading catches up. Checking
+            // for the false->true transition instead means a lingering stale-true reading (it was
+            // already true before) never counts as a fresh "keyboard just opened" signal.
+            val imeVisible = if (isFocusedEditable) isImeVisible() else false
+            if (!isTypingModeActive && isFocusedEditable) {
+                val selectKey = dpadSelectKeyCode.get()
+                val isSelectPress = event.action == KeyEvent.ACTION_DOWN && selectKey != null && event.keyCode == selectKey
+                if (isSelectPress || (imeVisible && !wasImeVisible)) {
+                    Log.d("BetterDpad", "Typing mode entered")
+                    isTypingModeActive = true
+                }
+            }
+            wasImeVisible = imeVisible
+
+            if (isTypingModeActive) {
+                rootNode.recycle()
+                return super.onKeyEvent(event)
+            }
+
+            // Dpad-remap keys never type a literal character - a mapped physical key always
+            // substitutes a synthetic dpad key event, so there's no "let it type normally" case
+            // to preserve, and no on-screen-keyboard detection needed here (that detection is
+            // unreliable anyway on hardware-keyboard devices, where the IME never shows). On a
+            // focused text field, try exiting to the adjacent widget at the text boundary first;
+            // fall back to an in-field cursor move only when there's more text to traverse.
+            if (dpadModeEnabled.get() && event.action == KeyEvent.ACTION_DOWN) {
+                val dpadKeyEvent = dpadKeyEventFor(event.keyCode)
+                if (dpadKeyEvent != null) {
+                    if (tryExitInputAtBoundary(rootNode, dpadKeyEvent)) {
+                        rootNode.recycle()
+                        return true
+                    }
+                    if (shizukuKeyInjector.state.value == ShizukuState.READY) {
+                        shizukuKeyInjector.sendKeyEvent(dpadKeyEvent)
+                        rootNode.recycle()
+                        return true
                     }
                 }
+            }
+
+            // Don't intercept the remaining bindings while the on-screen keyboard is actually
+            // shown, so real typing isn't hijacked - only relevant on devices with a software
+            // IME (dpad-remap above already handles hardware-keyboard devices where this never
+            // shows, since those keys can't type literally either way).
+            if (isImeVisible()) {
                 Log.d("BetterDpad", "Keyboard is active. Skipping interception")
                 rootNode.recycle()
                 return super.onKeyEvent(event)
@@ -248,18 +288,6 @@ class BetterDpadAccessibilityService : AccessibilityService() {
                     enterQuickJump(rootNode)
                     rootNode.recycle()
                     return true
-                }
-
-                // Remap an arbitrary key to a real dpad key press, injected via Shizuku. This
-                // works even in apps/screens with no proper accessibility focus tree (custom
-                // UIs, games), unlike a focusSearch()-based approach.
-                if (dpadModeEnabled.get()) {
-                    val dpadKeyEvent = dpadKeyEventFor(event.keyCode)
-                    if (dpadKeyEvent != null && shizukuKeyInjector.state.value == ShizukuState.READY) {
-                        shizukuKeyInjector.sendKeyEvent(dpadKeyEvent)
-                        rootNode.recycle()
-                        return true
-                    }
                 }
             }
 
@@ -325,6 +353,18 @@ class BetterDpadAccessibilityService : AccessibilityService() {
         } finally {
             focusedNode.recycle()
         }
+    }
+
+    /**
+     * Whether the on-screen keyboard is currently shown, checked via the actual IME window
+     * rather than "is the focused node editable" - requires flagRetrieveInteractiveWindows in
+     * the service config, without which [getWindows] always returns an empty list.
+     */
+    private fun isImeVisible(): Boolean {
+        val windowList = windows
+        val visible = windowList.any { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+        windowList.forEach { it.recycle() }
+        return visible
     }
 
     private fun collectFocusables(node: AccessibilityNodeInfo, out: MutableList<AccessibilityNodeInfo>) {
@@ -510,7 +550,6 @@ class BetterDpadAccessibilityService : AccessibilityService() {
         serviceScope.launch { prefs.dpadLeftKeyCode.collect { dpadLeftKeyCode.set(it) } }
         serviceScope.launch { prefs.dpadRightKeyCode.collect { dpadRightKeyCode.set(it) } }
         serviceScope.launch { prefs.dpadSelectKeyCode.collect { dpadSelectKeyCode.set(it) } }
-        serviceScope.launch { prefs.inputModeModifierKeyCode.collect { inputModeModifierKeyCode.set(it) } }
     }
 
     override fun onDestroy() {
