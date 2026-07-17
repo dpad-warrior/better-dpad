@@ -65,6 +65,7 @@ class MainView : ComponentActivity() {
                         onJumpToFabChange = settingsViewModel::setJumpToFab,
                         onQuickJumpChange = settingsViewModel::setQuickJump,
                         onQuickJumpHintStyleChange = settingsViewModel::setQuickJumpHintStyle,
+                        onClickModeKeyChange = settingsViewModel::setClickModeKeyCode,
                         onFocusHighlightToggle = settingsViewModel::setFocusHighlightEnabled,
                         onNavigateToFocusHighlightAppFilter = { screen = Screen.FOCUS_HIGHLIGHT_APP_FILTER },
                         onDpadUpChange = settingsViewModel::setDpadUp,

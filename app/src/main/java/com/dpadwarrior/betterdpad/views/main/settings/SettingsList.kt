@@ -35,6 +35,7 @@ fun SettingsList(
     onJumpToFabChange: (Int?) -> Unit,
     onQuickJumpChange: (Int?) -> Unit,
     onQuickJumpHintStyleChange: (QuickJumpHintStyle) -> Unit,
+    onClickModeKeyChange: (Int?) -> Unit,
     onFocusHighlightToggle: (Boolean) -> Unit,
     onNavigateToFocusHighlightAppFilter: () -> Unit,
     onDpadUpChange: (Int?) -> Unit,
@@ -93,6 +94,13 @@ fun SettingsList(
             description = "Labels every focusable element on screen - type its key to jump straight to it",
             keyCode = state.quickJump,
             onChange = onQuickJumpChange
+        )
+        HorizontalDivider()
+        KeyBindingListItem(
+            label = "Click mode",
+            description = "Labels every focusable element on screen - type its key to click it",
+            keyCode = state.clickModeKeyCode,
+            onChange = onClickModeKeyChange
         )
         HorizontalDivider()
         QuickJumpHintStyleListItem(
@@ -190,6 +198,7 @@ private fun SettingsListPreviewDisabled() {
             onJumpToFabChange = {},
             onQuickJumpChange = {},
             onQuickJumpHintStyleChange = {},
+            onClickModeKeyChange = {},
             onFocusHighlightToggle = {},
             onNavigateToFocusHighlightAppFilter = {},
             onDpadUpChange = {},
@@ -229,6 +238,7 @@ private fun SettingsListPreviewWithBindings() {
             onJumpToFabChange = {},
             onQuickJumpChange = {},
             onQuickJumpHintStyleChange = {},
+            onClickModeKeyChange = {},
             onFocusHighlightToggle = {},
             onNavigateToFocusHighlightAppFilter = {},
             onDpadUpChange = {},
@@ -255,6 +265,7 @@ private fun SettingsListPreviewShizukuNeedsPermission() {
             onJumpToFabChange = {},
             onQuickJumpChange = {},
             onQuickJumpHintStyleChange = {},
+            onClickModeKeyChange = {},
             onFocusHighlightToggle = {},
             onNavigateToFocusHighlightAppFilter = {},
             onDpadUpChange = {},
@@ -321,7 +332,10 @@ private fun QuickJumpHintStyleListItem(
         ListItem(
             headlineContent = { Text("Quick Jump hint style") },
             supportingContent = {
-                Text("Numbers (0-9, 10 per page) or letters (A-Z, 26 per page) - letters suit QWERTY hardware keyboards better")
+                Text(
+                    "Numbers (0-9, 10 per page) or letters (A-Z, 26 per page) - letters suit QWERTY " +
+                        "hardware keyboards better. Used by both Quick Jump and Click mode"
+                )
             },
             trailingContent = {
                 Text(

@@ -16,6 +16,7 @@ data class SettingsState(
     val jumpToFab: Int? = null,
     val quickJump: Int? = null,
     val quickJumpHintStyle: QuickJumpHintStyle = QuickJumpHintStyle.NUMBERS,
+    val clickModeKeyCode: Int? = null,
     val dpadUp: Int? = null,
     val dpadDown: Int? = null,
     val dpadLeft: Int? = null,

@@ -31,6 +31,7 @@ class AppPreferences(context: Context) {
     private val JUMP_TO_FAB_KEY_CODE = intPreferencesKey("jump_to_fab_key_code")
     private val QUICK_JUMP_KEY_CODE = intPreferencesKey("quick_jump_key_code")
     private val QUICK_JUMP_HINT_STYLE = stringPreferencesKey("quick_jump_hint_style")
+    private val CLICK_MODE_KEY_CODE = intPreferencesKey("click_mode_key_code")
     private val DPAD_UP_KEY_CODE = intPreferencesKey("dpad_up_key_code")
     private val DPAD_DOWN_KEY_CODE = intPreferencesKey("dpad_down_key_code")
     private val DPAD_LEFT_KEY_CODE = intPreferencesKey("dpad_left_key_code")
@@ -79,6 +80,9 @@ class AppPreferences(context: Context) {
                 QuickJumpHintStyle.entries.firstOrNull { it.name == stored }
             } ?: QuickJumpHintStyle.NUMBERS
         }
+
+    val clickModeKeyCode: Flow<Int?> =
+        dataStore.data.map { prefs -> prefs[CLICK_MODE_KEY_CODE]?.takeIf { it != NO_BINDING } }
 
     val dpadUpKeyCode: Flow<Int?> =
         dataStore.data.map { prefs -> prefs[DPAD_UP_KEY_CODE]?.takeIf { it != NO_BINDING } }
@@ -137,6 +141,10 @@ class AppPreferences(context: Context) {
 
     suspend fun setQuickJumpHintStyle(style: QuickJumpHintStyle) {
         dataStore.edit { prefs -> prefs[QUICK_JUMP_HINT_STYLE] = style.name }
+    }
+
+    suspend fun setClickModeKeyCode(keyCode: Int?) {
+        dataStore.edit { prefs -> prefs[CLICK_MODE_KEY_CODE] = keyCode ?: NO_BINDING }
     }
 
     suspend fun setDpadUpKeyCode(keyCode: Int?) {

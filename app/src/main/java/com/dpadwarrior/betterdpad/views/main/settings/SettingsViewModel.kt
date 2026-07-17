@@ -39,6 +39,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         state.copy(quickJump = quickJump)
     }.combine(prefs.quickJumpHintStyle) { state, quickJumpHintStyle ->
         state.copy(quickJumpHintStyle = quickJumpHintStyle)
+    }.combine(prefs.clickModeKeyCode) { state, clickModeKeyCode ->
+        state.copy(clickModeKeyCode = clickModeKeyCode)
     }.combine(prefs.isFocusHighlightEnabled) { state, focusHighlightEnabled ->
         state.copy(focusHighlightEnabled = focusHighlightEnabled)
     }.combine(prefs.focusHighlightAppFilterMode) { state, mode ->
@@ -116,6 +118,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun setQuickJumpHintStyle(style: QuickJumpHintStyle) {
         viewModelScope.launch { prefs.setQuickJumpHintStyle(style) }
+    }
+
+    fun setClickModeKeyCode(keyCode: Int?) {
+        viewModelScope.launch { prefs.setClickModeKeyCode(keyCode) }
     }
 
     fun setDpadUp(keyCode: Int?) {

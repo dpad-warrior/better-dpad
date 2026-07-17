@@ -42,6 +42,7 @@ class BetterDpadAccessibilityService : AccessibilityService() {
     private val jumpToLastKeyCode = AtomicReference<Int?>(null)
     private val jumpToFabKeyCode = AtomicReference<Int?>(null)
     private val quickJumpKeyCode = AtomicReference<Int?>(null)
+    private val clickModeKeyCode = AtomicReference<Int?>(null)
     private val dpadUpKeyCode = AtomicReference<Int?>(null)
     private val dpadDownKeyCode = AtomicReference<Int?>(null)
     private val dpadLeftKeyCode = AtomicReference<Int?>(null)
@@ -69,6 +70,7 @@ class BetterDpadAccessibilityService : AccessibilityService() {
     private data class QuickJumpTarget(val node: AccessibilityNodeInfo, val boundsInScreen: Rect)
     private var quickJumpTargets: List<QuickJumpTarget>? = null
     private var quickJumpPageIndex: Int = 0
+    private var activeHintAction: HintAction = HintAction.FOCUS
     private val quickJumpHintStyle = AtomicReference(QuickJumpHintStyle.NUMBERS)
 
     // Letters give 26 hints per page (A-Z) instead of 10 (0-9) - handy on QWERTY hardware
@@ -295,7 +297,16 @@ class BetterDpadAccessibilityService : AccessibilityService() {
                 // type a number + confirm to jump straight to it.
                 val quickJumpKey = quickJumpKeyCode.get()
                 if (quickJumpKey != null && event.keyCode == quickJumpKey) {
-                    enterQuickJump(rootNode)
+                    enterQuickJump(rootNode, HintAction.FOCUS)
+                    rootNode.recycle()
+                    return true
+                }
+
+                // Toggle Click Mode: same hint mechanism as Quick Jump, but selecting a hint
+                // clicks the target instead of moving focus to it.
+                val clickModeKey = clickModeKeyCode.get()
+                if (clickModeKey != null && event.keyCode == clickModeKey) {
+                    enterQuickJump(rootNode, HintAction.CLICK)
                     rootNode.recycle()
                     return true
                 }
@@ -384,7 +395,8 @@ class BetterDpadAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun enterQuickJump(rootNode: AccessibilityNodeInfo) {
+    private fun enterQuickJump(rootNode: AccessibilityNodeInfo, action: HintAction) {
+        activeHintAction = action
         val focusables = mutableListOf<AccessibilityNodeInfo>()
         collectFocusables(rootNode, focusables)
 
@@ -436,8 +448,9 @@ class BetterDpadAccessibilityService : AccessibilityService() {
     private fun handleQuickJumpKeyEvent(event: KeyEvent) {
         if (event.action != KeyEvent.ACTION_DOWN) return
 
-        val toggleKey = quickJumpKeyCode.get()
-        if (toggleKey != null && event.keyCode == toggleKey) {
+        // Either toggle key cancels the active session - only one hint session (Quick Jump or
+        // Click Mode) can be active at a time, so there's no ambiguity about which one to cancel.
+        if (event.keyCode == quickJumpKeyCode.get() || event.keyCode == clickModeKeyCode.get()) {
             Log.d("BetterDpad", "Quick Jump cancelled via toggle key")
             exitQuickJump()
             return
@@ -495,7 +508,11 @@ class BetterDpadAccessibilityService : AccessibilityService() {
         val index = quickJumpPageIndex * quickJumpPageSize + hintIndex
         val target = targets.getOrNull(index)
         Log.d("BetterDpad", "Quick Jump hint $hintIndex on page $quickJumpPageIndex -> $target")
-        target?.node?.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+        val action = when (activeHintAction) {
+            HintAction.FOCUS -> AccessibilityNodeInfo.ACTION_FOCUS
+            HintAction.CLICK -> AccessibilityNodeInfo.ACTION_CLICK
+        }
+        target?.node?.performAction(action)
         exitQuickJump()
     }
 
@@ -557,6 +574,7 @@ class BetterDpadAccessibilityService : AccessibilityService() {
         serviceScope.launch { prefs.jumpToFabKeyCode.collect { jumpToFabKeyCode.set(it) } }
         serviceScope.launch { prefs.quickJumpKeyCode.collect { quickJumpKeyCode.set(it) } }
         serviceScope.launch { prefs.quickJumpHintStyle.collect { quickJumpHintStyle.set(it) } }
+        serviceScope.launch { prefs.clickModeKeyCode.collect { clickModeKeyCode.set(it) } }
         serviceScope.launch { prefs.dpadUpKeyCode.collect { dpadUpKeyCode.set(it) } }
         serviceScope.launch { prefs.dpadDownKeyCode.collect { dpadDownKeyCode.set(it) } }
         serviceScope.launch { prefs.dpadLeftKeyCode.collect { dpadLeftKeyCode.set(it) } }
