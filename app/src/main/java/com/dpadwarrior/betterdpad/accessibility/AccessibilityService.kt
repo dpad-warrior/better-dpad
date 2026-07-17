@@ -35,6 +35,8 @@ class BetterDpadAccessibilityService : AccessibilityService() {
     private val appEnabled = AtomicBoolean(true)
     private val debugModeEnabled = AtomicBoolean(false)
     private val focusHighlightEnabled = AtomicBoolean(false)
+    private val focusHighlightAppFilterMode = AtomicReference(FocusHighlightAppFilterMode.ALL_EXCEPT_SELECTED)
+    private val focusHighlightAppList = AtomicReference<Set<String>>(emptySet())
     private val dpadModeEnabled = AtomicBoolean(true)
     private val jumpToFirstKeyCode = AtomicReference<Int?>(null)
     private val jumpToLastKeyCode = AtomicReference<Int?>(null)
@@ -123,13 +125,21 @@ class BetterDpadAccessibilityService : AccessibilityService() {
     }
 
     private fun updateFocusHighlight(source: AccessibilityNodeInfo) {
-        if (!appEnabled.get() || !focusHighlightEnabled.get()) {
+        if (!appEnabled.get() || !focusHighlightEnabled.get() || !isFocusHighlightAllowedFor(source.packageName)) {
             focusHighlightOverlay.hide()
             return
         }
         val bounds = Rect()
         source.getBoundsInScreen(bounds)
         focusHighlightOverlay.show(bounds)
+    }
+
+    private fun isFocusHighlightAllowedFor(packageName: CharSequence?): Boolean {
+        val inList = packageName?.toString() in focusHighlightAppList.get()
+        return when (focusHighlightAppFilterMode.get()) {
+            FocusHighlightAppFilterMode.ALL_EXCEPT_SELECTED -> !inList
+            FocusHighlightAppFilterMode.ONLY_SELECTED -> inList
+        }
     }
 
     override fun onKeyEvent(event: KeyEvent?): Boolean {
@@ -539,6 +549,8 @@ class BetterDpadAccessibilityService : AccessibilityService() {
             focusHighlightEnabled.set(enabled)
             if (!enabled) focusHighlightOverlay.hide()
         } }
+        serviceScope.launch { prefs.focusHighlightAppFilterMode.collect { focusHighlightAppFilterMode.set(it) } }
+        serviceScope.launch { prefs.focusHighlightAppList.collect { focusHighlightAppList.set(it) } }
         serviceScope.launch { prefs.isDpadModeEnabled.collect { dpadModeEnabled.set(it) } }
         serviceScope.launch { prefs.jumpToFirstKeyCode.collect { jumpToFirstKeyCode.set(it) } }
         serviceScope.launch { prefs.jumpToLastKeyCode.collect { jumpToLastKeyCode.set(it) } }

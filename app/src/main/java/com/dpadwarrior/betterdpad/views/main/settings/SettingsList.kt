@@ -36,6 +36,7 @@ fun SettingsList(
     onQuickJumpChange: (Int?) -> Unit,
     onQuickJumpHintStyleChange: (QuickJumpHintStyle) -> Unit,
     onFocusHighlightToggle: (Boolean) -> Unit,
+    onNavigateToFocusHighlightAppFilter: () -> Unit,
     onDpadUpChange: (Int?) -> Unit,
     onDpadDownChange: (Int?) -> Unit,
     onDpadLeftChange: (Int?) -> Unit,
@@ -53,8 +54,14 @@ fun SettingsList(
         HorizontalDivider()
         ListItem(
             headlineContent = { Text("Show focus highlight") },
-            supportingContent = { Text("Draws a border around the focused item, for devices whose skin hides it") },
-            trailingContent = { Switch(checked = state.focusHighlightEnabled, onCheckedChange = onFocusHighlightToggle) }
+            supportingContent = {
+                Text(
+                    "Draws a border around the focused item, for devices whose skin hides it - " +
+                        "tap to choose which apps this applies to"
+                )
+            },
+            trailingContent = { Switch(checked = state.focusHighlightEnabled, onCheckedChange = onFocusHighlightToggle) },
+            modifier = Modifier.clickable(onClick = onNavigateToFocusHighlightAppFilter)
         )
         HorizontalDivider()
         Text(
@@ -184,6 +191,7 @@ private fun SettingsListPreviewDisabled() {
             onQuickJumpChange = {},
             onQuickJumpHintStyleChange = {},
             onFocusHighlightToggle = {},
+            onNavigateToFocusHighlightAppFilter = {},
             onDpadUpChange = {},
             onDpadDownChange = {},
             onDpadLeftChange = {},
@@ -222,6 +230,7 @@ private fun SettingsListPreviewWithBindings() {
             onQuickJumpChange = {},
             onQuickJumpHintStyleChange = {},
             onFocusHighlightToggle = {},
+            onNavigateToFocusHighlightAppFilter = {},
             onDpadUpChange = {},
             onDpadDownChange = {},
             onDpadLeftChange = {},
@@ -247,6 +256,7 @@ private fun SettingsListPreviewShizukuNeedsPermission() {
             onQuickJumpChange = {},
             onQuickJumpHintStyleChange = {},
             onFocusHighlightToggle = {},
+            onNavigateToFocusHighlightAppFilter = {},
             onDpadUpChange = {},
             onDpadDownChange = {},
             onDpadLeftChange = {},
@@ -335,3 +345,4 @@ private fun QuickJumpHintStyleListItem(
         }
     }
 }
+

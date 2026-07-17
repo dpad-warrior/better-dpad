@@ -1,14 +1,18 @@
 package com.dpadwarrior.betterdpad.views.main.settings
 
 import android.app.Application
+import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.dpadwarrior.betterdpad.BetterDpad
+import com.dpadwarrior.betterdpad.accessibility.FocusHighlightAppFilterMode
 import com.dpadwarrior.betterdpad.accessibility.QuickJumpHintStyle
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -37,6 +41,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         state.copy(quickJumpHintStyle = quickJumpHintStyle)
     }.combine(prefs.isFocusHighlightEnabled) { state, focusHighlightEnabled ->
         state.copy(focusHighlightEnabled = focusHighlightEnabled)
+    }.combine(prefs.focusHighlightAppFilterMode) { state, mode ->
+        state.copy(focusHighlightAppFilterMode = mode)
+    }.combine(prefs.focusHighlightAppList) { state, packages ->
+        state.copy(focusHighlightAppList = packages)
     }.combine(prefs.isDpadModeEnabled) { state, dpadModeEnabled ->
         state.copy(dpadModeEnabled = dpadModeEnabled)
     }.combine(dpadKeyCodes) { state, codes ->
@@ -65,6 +73,29 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun setDpadModeEnabled(enabled: Boolean) {
         viewModelScope.launch { prefs.setDpadModeEnabled(enabled) }
+    }
+
+    fun setFocusHighlightAppFilterMode(mode: FocusHighlightAppFilterMode) {
+        viewModelScope.launch { prefs.setFocusHighlightAppFilterMode(mode) }
+    }
+
+    fun setFocusHighlightAppList(packages: Set<String>) {
+        viewModelScope.launch { prefs.setFocusHighlightAppList(packages) }
+    }
+
+    suspend fun loadInstalledApps(): List<InstalledApp> = withContext(Dispatchers.IO) {
+        val packageManager = getApplication<Application>().packageManager
+        val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        packageManager.queryIntentActivities(launcherIntent, 0)
+            .distinctBy { it.activityInfo.packageName }
+            .map { resolveInfo ->
+                InstalledApp(
+                    packageName = resolveInfo.activityInfo.packageName,
+                    label = resolveInfo.loadLabel(packageManager).toString(),
+                    icon = resolveInfo.loadIcon(packageManager)
+                )
+            }
+            .sortedBy { it.label.lowercase() }
     }
 
     fun setJumpToFirst(keyCode: Int?) {

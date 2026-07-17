@@ -7,7 +7,9 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.dpadwarrior.betterdpad.accessibility.FocusHighlightAppFilterMode
 import com.dpadwarrior.betterdpad.accessibility.QuickJumpHintStyle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -21,6 +23,8 @@ class AppPreferences(context: Context) {
     private val APP_ENABLED = booleanPreferencesKey("app_enabled")
     private val DEBUG_MODE = booleanPreferencesKey("debug_mode")
     private val FOCUS_HIGHLIGHT_ENABLED = booleanPreferencesKey("focus_highlight_enabled")
+    private val FOCUS_HIGHLIGHT_APP_FILTER_MODE = stringPreferencesKey("focus_highlight_app_filter_mode")
+    private val FOCUS_HIGHLIGHT_APP_LIST = stringSetPreferencesKey("focus_highlight_app_list")
     private val DPAD_MODE_ENABLED = booleanPreferencesKey("dpad_mode_enabled")
     private val JUMP_TO_FIRST_KEY_CODE = intPreferencesKey("jump_to_first_key_code")
     private val JUMP_TO_LAST_KEY_CODE = intPreferencesKey("jump_to_last_key_code")
@@ -43,6 +47,16 @@ class AppPreferences(context: Context) {
 
     val isFocusHighlightEnabled: Flow<Boolean> =
         dataStore.data.map { prefs -> prefs[FOCUS_HIGHLIGHT_ENABLED] ?: false }
+
+    val focusHighlightAppFilterMode: Flow<FocusHighlightAppFilterMode> =
+        dataStore.data.map { prefs ->
+            prefs[FOCUS_HIGHLIGHT_APP_FILTER_MODE]?.let { stored ->
+                FocusHighlightAppFilterMode.entries.firstOrNull { it.name == stored }
+            } ?: FocusHighlightAppFilterMode.ALL_EXCEPT_SELECTED
+        }
+
+    val focusHighlightAppList: Flow<Set<String>> =
+        dataStore.data.map { prefs -> prefs[FOCUS_HIGHLIGHT_APP_LIST] ?: emptySet() }
 
     val isDpadModeEnabled: Flow<Boolean> =
         dataStore.data.map { prefs -> prefs[DPAD_MODE_ENABLED] ?: true }
@@ -91,6 +105,14 @@ class AppPreferences(context: Context) {
 
     suspend fun setFocusHighlightEnabled(enabled: Boolean) {
         dataStore.edit { prefs -> prefs[FOCUS_HIGHLIGHT_ENABLED] = enabled }
+    }
+
+    suspend fun setFocusHighlightAppFilterMode(mode: FocusHighlightAppFilterMode) {
+        dataStore.edit { prefs -> prefs[FOCUS_HIGHLIGHT_APP_FILTER_MODE] = mode.name }
+    }
+
+    suspend fun setFocusHighlightAppList(packages: Set<String>) {
+        dataStore.edit { prefs -> prefs[FOCUS_HIGHLIGHT_APP_LIST] = packages }
     }
 
     suspend fun setDpadModeEnabled(enabled: Boolean) {
