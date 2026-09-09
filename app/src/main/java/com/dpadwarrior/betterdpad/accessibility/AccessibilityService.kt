@@ -448,27 +448,30 @@ class BetterDpadAccessibilityService : AccessibilityService() {
     private fun handleQuickJumpKeyEvent(event: KeyEvent) {
         if (event.action != KeyEvent.ACTION_DOWN) return
 
-        // Either toggle key cancels the active session - only one hint session (Quick Jump or
-        // Click Mode) can be active at a time, so there's no ambiguity about which one to cancel.
-        if (event.keyCode == quickJumpKeyCode.get() || event.keyCode == clickModeKeyCode.get()) {
-            Log.d("BetterDpad", "Quick Jump cancelled via toggle key")
-            exitQuickJump()
-            return
-        }
         if (event.keyCode == KeyEvent.KEYCODE_BACK) {
             Log.d("BetterDpad", "Quick Jump cancelled via back")
             exitQuickJump()
             return
         }
 
-        // Checked before the raw-keyCode dpad paging check below: on a hardware keyboard, the
-        // same physical letter key can simultaneously be configured as a dpad direction AND, via
-        // an Alt/modifier chord, resolve to a hint character - the key character map result (which
-        // reflects the currently-held modifier state) disambiguates which one the user meant. A
-        // hint match always jumps immediately, no confirm key needed.
+        // Checked before the toggle-key cancel and the raw-keyCode dpad paging check below: on a
+        // hardware keyboard, the same physical key can simultaneously be configured as the toggle
+        // key (or a dpad direction) AND, via an Alt/modifier chord, resolve to a hint character -
+        // the key character map result (which reflects the currently-held modifier state)
+        // disambiguates which one the user meant. A hint match always jumps immediately, no
+        // confirm key needed, and takes priority so an element hinted with the toggle key can
+        // still be acted on instead of the press always cancelling the session.
         val hintIndex = resolveQuickJumpHintIndex(event)
         if (hintIndex != null) {
             jumpToQuickJumpHint(hintIndex)
+            return
+        }
+
+        // Either toggle key cancels the active session - only one hint session (Quick Jump or
+        // Click Mode) can be active at a time, so there's no ambiguity about which one to cancel.
+        if (event.keyCode == quickJumpKeyCode.get() || event.keyCode == clickModeKeyCode.get()) {
+            Log.d("BetterDpad", "Quick Jump cancelled via toggle key")
+            exitQuickJump()
             return
         }
 
