@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.os.IBinder
 import android.os.RemoteException
 import android.util.Log
+import java.util.concurrent.Executors
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import rikka.shizuku.Shizuku
@@ -28,6 +29,18 @@ class ShizukuKeyInjector(private val context: Context) {
     val state: StateFlow<ShizukuState> = _state
 
     private var service: IDpadKeyService? = null
+
+    // The injected event is dispatched with WAIT_FOR_FINISH semantics (Instrumentation.
+    // sendKeyDownUpSync), so the binder call blocks until the target window has handled it.
+    // The caller is BetterDpadAccessibilityService.onKeyEvent, which runs on the process main
+    // thread - and when the focused window belongs to this same app (e.g. our own settings
+    // screen), that target window IS the main thread. Calling synchronously there deadlocks:
+    // the main thread waits for an event it can only handle after it stops waiting -> ANR.
+    // Running the call on a dedicated single thread keeps ordering while freeing the main
+    // thread to receive the injected event.
+    private val injectionExecutor = Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "dpad-key-injection").apply { isDaemon = true }
+    }
 
     private val userServiceArgs = Shizuku.UserServiceArgs(
         ComponentName(context.packageName, DpadKeyService::class.java.name)
@@ -73,10 +86,12 @@ class ShizukuKeyInjector(private val context: Context) {
 
     fun sendKeyEvent(keyCode: Int) {
         val currentService = service ?: return
-        try {
-            currentService.sendKeyEvent(keyCode)
-        } catch (e: RemoteException) {
-            Log.w("BetterDpad", "Failed to send key event via Shizuku", e)
+        injectionExecutor.execute {
+            try {
+                currentService.sendKeyEvent(keyCode)
+            } catch (e: RemoteException) {
+                Log.w("BetterDpad", "Failed to send key event via Shizuku", e)
+            }
         }
     }
 
