@@ -49,17 +49,31 @@ class BetterDpadAccessibilityService : AccessibilityService() {
     private val dpadRightKeyCode = AtomicReference<Int?>(null)
     private val dpadSelectKeyCode = AtomicReference<Int?>(null)
 
-    // True while Typing Mode is active: suspends all interception so mapped keys type their
-    // literal character normally. Only touched from onKeyEvent, always called on the service's
-    // main thread, so no synchronization needed. See onKeyEvent for entry/exit conditions.
-    private var isTypingModeActive = false
+    // A focused input element has two states:
+    //   1. Focused but not yet editing - button mappings stay active, keystrokes are not typed
+    //      into the field. This is the default when focus lands on the field.
+    //   2. Input Mode - entered by pressing D-pad Select/Enter on the field, clicking it via
+    //      click mode, or automatically when the on-screen keyboard opens over it. All
+    //      interception is suspended so keystrokes type normally, and the InputModeOverlay
+    //      banner is shown. Exited by pressing Back, when focus leaves the field, or when the
+    //      keyboard closes (for a keyboard-started session).
+    // Touched from onKeyEvent and onAccessibilityEvent, both on the service's main thread, so
+    // no synchronization needed.
+    private var isInputModeActive = false
 
-    // Last-seen isImeVisible() result, used to detect the true->false->true transition rather
-    // than the current level - see onKeyEvent's typing mode entry check.
+    // Last-seen isImeVisible() result. Auto-entry into Input Mode keys off the false->true
+    // transition rather than the current level: isImeVisible() lags behind reality for a while
+    // after the IME closes, so a level check would immediately re-enter on the next keystroke.
     private var wasImeVisible = false
+
+    // True when the current Input Mode session was entered automatically because the on-screen
+    // keyboard opened (vs. a deliberate Enter/click). Such a session ends when the keyboard
+    // closes; an Enter/click session ends when focus leaves the field.
+    private var inputModeFromIme = false
 
     private val appConfigs = AppConfigLoader.configs
     private val focusHighlightOverlay by lazy { FocusHighlightOverlay(this) }
+    private val inputModeOverlay by lazy { InputModeOverlay(this) }
     private val quickJumpOverlay by lazy { QuickJumpOverlay(this) }
     private val shizukuKeyInjector: ShizukuKeyInjector
         get() = (application as BetterDpad).shizukuKeyInjector
@@ -113,7 +127,36 @@ class BetterDpadAccessibilityService : AccessibilityService() {
             AccessibilityEvent.TYPE_VIEW_SCROLLED -> {
                 refreshFocusHighlight()
             }
+            // The on-screen keyboard opening/closing is a window change, not a key or focus
+            // event - handle it here so Input Mode's banner appears the moment a screen that
+            // auto-focuses its text field pops the keyboard, without waiting for a keystroke.
+            AccessibilityEvent.TYPE_WINDOWS_CHANGED -> {
+                if (appEnabled.get()) syncInputModeWithIme()
+            }
         }
+    }
+
+    /**
+     * Enters/exits the keyboard-driven Input Mode session based on whether the IME window is
+     * currently shown. Called from both [onAccessibilityEvent] (window changes) and
+     * [onKeyEvent]; both run on the service's main thread so the shared state is safe. Entry is
+     * edge-triggered off [wasImeVisible] because [isImeVisible] lags the real IME state after a
+     * close. Only sessions started by the keyboard ([inputModeFromIme]) are ended here - an
+     * Enter/click session ends when focus leaves the field, handled in [onKeyEvent].
+     */
+    private fun syncInputModeWithIme(imeVisible: Boolean = isImeVisible()) {
+        if (isInputModeActive && inputModeFromIme && !imeVisible) {
+            Log.d("BetterDpad", "Input mode exited (keyboard closed)")
+            isInputModeActive = false
+            inputModeFromIme = false
+            inputModeOverlay.hide()
+        } else if (!isInputModeActive && imeVisible && !wasImeVisible) {
+            Log.d("BetterDpad", "Input mode entered (keyboard opened)")
+            isInputModeActive = true
+            inputModeFromIme = true
+            inputModeOverlay.show()
+        }
+        wasImeVisible = imeVisible
     }
 
     private fun refreshFocusHighlight() {
@@ -174,43 +217,65 @@ class BetterDpadAccessibilityService : AccessibilityService() {
                 return super.onKeyEvent(event)
             }
 
-            // Typing Mode: suspends all interception so mapped keys type their literal
-            // character normally - needed because dpad-remap keys otherwise always act as dpad
-            // (never as themselves). Entered automatically, either when a real on-screen
-            // keyboard appears, or (for hardware-keyboard devices where no IME ever pops up)
-            // when the user presses D-pad Select on an editable field - the universal "start
-            // editing this field" gesture. Exited by pressing Back (still passed through
-            // normally below, so the app's own Back handling - closing the IME, navigating
-            // away, etc - behaves as usual) or if focus otherwise leaves the field.
+            // Input Mode, state 2 of a focused input element (state 1 is "focused, mappings
+            // still active"). Suspends all interception so mapped keys type their literal
+            // character normally. Entered when the user presses Enter / D-pad Select while an
+            // editable field is focused (the deliberate "start editing" gesture), or clicks
+            // one via click mode, or automatically when a real on-screen keyboard opens over a
+            // focused editable field (e.g. a screen that auto-focuses its search box). Exited
+            // by pressing Back (still passed through normally below, so the app's own Back
+            // handling behaves as usual) or when focus otherwise leaves the field.
             val inputFocusedNode = rootNode.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
             val isFocusedEditable = inputFocusedNode?.isEditable == true
-            inputFocusedNode?.recycle()
 
+            // Checked via the actual IME window, not "is the focused node editable" - the latter
+            // is unreliable once the keyboard is up (findFocus can land on the IME's own tree,
+            // and some toolkits expose the field as a virtual node), which is exactly when we
+            // need this signal.
+            val imeVisible = isImeVisible()
+
+            // Keyboard-driven enter/exit (also handled on window changes in onAccessibilityEvent).
+            syncInputModeWithIme(imeVisible)
+
+            // An Enter/click session isn't tied to the keyboard, so it ends when focus leaves
+            // the field, or on Back.
             val isBackPress = event.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_BACK
-
-            if (isTypingModeActive && (!isFocusedEditable || isBackPress)) {
-                Log.d("BetterDpad", "Typing mode exited")
-                isTypingModeActive = false
+            if (isInputModeActive && (isBackPress ||
+                    (!inputModeFromIme && !isFocusedEditable && !imeVisible))) {
+                Log.d("BetterDpad", "Input mode exited")
+                isInputModeActive = false
+                inputModeFromIme = false
+                inputModeOverlay.hide()
             }
 
-            // isImeVisible() lags behind the actual IME state for a while after Back closes it -
-            // the window doesn't disappear from getWindows() the instant Back is processed, so a
-            // level check ("is it visible right now") would immediately re-enter typing mode on
-            // whichever keystroke happens to land before the stale reading catches up. Checking
-            // for the false->true transition instead means a lingering stale-true reading (it was
-            // already true before) never counts as a fresh "keyboard just opened" signal.
-            val imeVisible = if (isFocusedEditable) isImeVisible() else false
-            if (!isTypingModeActive && isFocusedEditable) {
+            // Handled on both DOWN and UP: often the field isn't directly D-pad-focusable and
+            // the user's Enter lands on a wrapper view whose click is what moves focus into the
+            // real EditText - so by the time the field is editable, only the UP is left. The
+            // isInputModeActive guard below makes sure a single press can't trigger twice.
+            if (!isInputModeActive && isFocusedEditable &&
+                (event.action == KeyEvent.ACTION_DOWN || event.action == KeyEvent.ACTION_UP)) {
                 val selectKey = dpadSelectKeyCode.get()
-                val isSelectPress = event.action == KeyEvent.ACTION_DOWN && selectKey != null && event.keyCode == selectKey
-                if (isSelectPress || (imeVisible && !wasImeVisible)) {
-                    Log.d("BetterDpad", "Typing mode entered")
-                    isTypingModeActive = true
+                val isEnterPress = event.keyCode == selectKey ||
+                    event.keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+                    event.keyCode == KeyEvent.KEYCODE_ENTER ||
+                    event.keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER
+                if (isEnterPress) {
+                    Log.d("BetterDpad", "Input mode entered")
+                    isInputModeActive = true
+                    inputModeFromIme = false
+                    // Move real (editing) focus into the field and open the IME if there is one.
+                    inputFocusedNode?.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+                    inputFocusedNode?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                    inputModeOverlay.show()
+                    inputFocusedNode?.recycle()
+                    rootNode.recycle()
+                    return true
                 }
             }
-            wasImeVisible = imeVisible
 
-            if (isTypingModeActive) {
+            inputFocusedNode?.recycle()
+
+            if (isInputModeActive) {
                 rootNode.recycle()
                 return super.onKeyEvent(event)
             }
@@ -240,7 +305,7 @@ class BetterDpadAccessibilityService : AccessibilityService() {
             // shown, so real typing isn't hijacked - only relevant on devices with a software
             // IME (dpad-remap above already handles hardware-keyboard devices where this never
             // shows, since those keys can't type literally either way).
-            if (isImeVisible()) {
+            if (imeVisible) {
                 Log.d("BetterDpad", "Keyboard is active. Skipping interception")
                 rootNode.recycle()
                 return super.onKeyEvent(event)
@@ -516,6 +581,17 @@ class BetterDpadAccessibilityService : AccessibilityService() {
             HintAction.CLICK -> AccessibilityNodeInfo.ACTION_CLICK
         }
         target?.node?.performAction(action)
+
+        // Clicking an input element starts editing it, so go straight to Input Mode (state 2)
+        // and show the banner - matching what happens when the user presses Enter on a focused
+        // field. Merely focusing one (Quick Jump) leaves it in state 1, mappings still active.
+        if (activeHintAction == HintAction.CLICK && target?.node?.isEditable == true) {
+            Log.d("BetterDpad", "Input mode entered via click mode")
+            target.node.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+            isInputModeActive = true
+            inputModeFromIme = false
+            inputModeOverlay.show()
+        }
         exitQuickJump()
     }
 
@@ -562,6 +638,9 @@ class BetterDpadAccessibilityService : AccessibilityService() {
             if (!enabled) {
                 focusHighlightOverlay.hide()
                 exitQuickJump()
+                isInputModeActive = false
+                inputModeFromIme = false
+                inputModeOverlay.hide()
             }
         } }
         serviceScope.launch { prefs.isDebugModeEnabled.collect { debugModeEnabled.set(it) } }
@@ -589,6 +668,7 @@ class BetterDpadAccessibilityService : AccessibilityService() {
         super.onDestroy()
         focusHighlightOverlay.hide()
         exitQuickJump()
+        inputModeOverlay.hide()
         serviceScope.cancel()
     }
 
