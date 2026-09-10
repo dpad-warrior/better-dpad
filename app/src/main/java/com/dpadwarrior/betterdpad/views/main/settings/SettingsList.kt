@@ -4,6 +4,9 @@ import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -18,12 +21,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.dpadwarrior.betterdpad.accessibility.QuickJumpHintStyle
 import com.dpadwarrior.betterdpad.shizuku.ShizukuState
 import com.dpadwarrior.betterdpad.views.BetterDpadTheme
+import com.dpadwarrior.betterdpad.views.dpadFocusHighlight
 
 @Composable
 fun SettingsList(
@@ -50,19 +55,19 @@ fun SettingsList(
         ListItem(
             headlineContent = { Text("Enable BetterDpad") },
             supportingContent = { Text("Turn on/off the helper functionalities") },
-            trailingContent = { Switch(checked = state.appEnabled, onCheckedChange = onAppEnabledToggle) }
+            trailingContent = {
+                Switch(
+                    checked = state.appEnabled,
+                    onCheckedChange = onAppEnabledToggle,
+                    modifier = Modifier.dpadFocusHighlight()
+                )
+            }
         )
         HorizontalDivider()
-        ListItem(
-            headlineContent = { Text("Show focus highlight") },
-            supportingContent = {
-                Text(
-                    "Draws a border around the focused item, for devices whose skin hides it - " +
-                        "tap to choose which apps this applies to"
-                )
-            },
-            trailingContent = { Switch(checked = state.focusHighlightEnabled, onCheckedChange = onFocusHighlightToggle) },
-            modifier = Modifier.clickable(onClick = onNavigateToFocusHighlightAppFilter)
+        FocusHighlightListItem(
+            enabled = state.focusHighlightEnabled,
+            onToggle = onFocusHighlightToggle,
+            onNavigate = onNavigateToFocusHighlightAppFilter
         )
         HorizontalDivider()
         Text(
@@ -117,7 +122,13 @@ fun SettingsList(
         ListItem(
             headlineContent = { Text("Enable D-pad remapping") },
             supportingContent = { Text("Master switch for the bindings below - turn off without losing them") },
-            trailingContent = { Switch(checked = state.dpadModeEnabled, onCheckedChange = onDpadModeToggle) }
+            trailingContent = {
+                Switch(
+                    checked = state.dpadModeEnabled,
+                    onCheckedChange = onDpadModeToggle,
+                    modifier = Modifier.dpadFocusHighlight()
+                )
+            }
         )
         HorizontalDivider()
         if (state.shizukuState == ShizukuState.READY) {
@@ -179,7 +190,13 @@ fun SettingsList(
         )
         ListItem(
             headlineContent = { Text("Debug mode") },
-            trailingContent = { Switch(checked = state.debugMode, onCheckedChange = onDebugToggle) }
+            trailingContent = {
+                Switch(
+                    checked = state.debugMode,
+                    onCheckedChange = onDebugToggle,
+                    modifier = Modifier.dpadFocusHighlight()
+                )
+            }
         )
         HorizontalDivider()
     }
@@ -275,6 +292,48 @@ private fun SettingsListPreviewShizukuNeedsPermission() {
             onDpadSelectChange = {},
             onDpadModeToggle = {},
             onRequestShizukuPermission = {}
+        )
+    }
+}
+
+/**
+ * Like a [ListItem] with a headline/supporting text and a trailing [Switch], but the row and
+ * the switch are two separate D-pad focus targets: the text area (left of the switch) opens the
+ * per-app filter screen, the switch toggles the feature. A single full-width clickable ListItem
+ * makes the switch unreachable by D-pad because it sits inside the row's own focus bounds.
+ */
+@Composable
+private fun FocusHighlightListItem(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit,
+    onNavigate: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 72.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .clickable(onClick = onNavigate)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Text("Show focus highlight", style = MaterialTheme.typography.bodyLarge)
+            Text(
+                "Draws a border around the focused item, for devices whose skin hides it - " +
+                    "tap to choose which apps this applies to",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(
+            checked = enabled,
+            onCheckedChange = onToggle,
+            modifier = Modifier
+                .padding(end = 16.dp)
+                .dpadFocusHighlight()
         )
     }
 }
